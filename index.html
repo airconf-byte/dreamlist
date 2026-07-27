@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet" />
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
   :root {
     --bg-0: #0a0b1e;
@@ -208,6 +209,12 @@
   .auth-links a { color: var(--cyan); cursor: pointer; text-decoration: none; }
   .auth-links a:hover { text-decoration: underline; }
 
+  .imp-note { font-size: 13px; color: var(--text-soft); margin: 0 0 14px; line-height: 1.6; }
+  .imp-fname { font-size: 12px; color: var(--cyan); margin-left: 10px; }
+  .imp-check { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-soft); margin: 2px 0 12px; cursor: pointer; }
+  .imp-check input { width: 16px; height: 16px; accent-color: var(--violet); }
+  .imp-preview { font-size: 12px; color: var(--text-soft); background: rgba(255,255,255,.04); border: 1px solid var(--stroke); border-radius: 10px; padding: 10px 12px; min-height: 20px; line-height: 1.8; }
+
   .empty-note { text-align: center; color: var(--text-soft); padding: 40px; font-size: 14px; }
   footer { text-align: center; color: var(--text-soft); font-size: 12px; margin-top: 46px; opacity: .7; }
   #confetti { position: fixed; inset: 0; pointer-events: none; z-index: 60; }
@@ -269,8 +276,9 @@
     <div class="toolbar" id="toolbar">
       <button class="btn primary" onclick="openAdd()">＋ 夢を追加</button>
       <button class="btn" onclick="shareList()">🔗 共有リンクをコピー</button>
+      <button class="btn" onclick="openImport()">📊 表から取込</button>
       <button class="btn" onclick="exportJson()">⬇ バックアップ</button>
-      <label class="btn" style="cursor:pointer">⬆ 読み込み<input type="file" accept=".json" style="display:none" onchange="importJson(event)"></label>
+      <label class="btn" style="cursor:pointer">⬆ JSON復元<input type="file" accept=".json" style="display:none" onchange="importJson(event)"></label>
       <span class="acct" id="acct"></span>
       <button class="btn" id="logoutBtn" style="display:none" onclick="logout()">ログアウト</button>
     </div>
@@ -305,6 +313,28 @@
       <div class="modal-actions">
         <button class="btn" onclick="closeModal()">キャンセル</button>
         <button class="btn primary" onclick="saveDream()">保存する</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- スプレッドシート取込モーダル -->
+  <div class="modal-bg" id="importBg">
+    <div class="modal" style="max-width:520px">
+      <h3>📊 表から取り込み</h3>
+      <p class="imp-note">Excel（.xlsx）・CSV・Markdown（.md）の夢リストを読み込みます。まずファイルを選んでください。<br>※Markdownは箇条書きを自動で読み取り、「3ヶ月以内／今年／3年以内…」などの見出しから期限を判定します。</p>
+      <label class="btn" style="cursor:pointer">📁 ファイルを選ぶ<input type="file" id="impFile" accept=".xlsx,.xls,.csv,.md,.markdown,.txt" style="display:none" onchange="onImpFile(event)"></label>
+      <span class="imp-fname" id="impFileName"></span>
+      <div id="impMap" style="display:none; margin-top:16px">
+        <div class="field"><label>✍️ 「夢」の列（必須）</label><select id="mapText"></select></div>
+        <div class="field"><label>🏷️ カテゴリの列（任意・無ければ夢の内容から自動分類）</label><select id="mapCat"></select></div>
+        <div class="field"><label>⏳ 期限の列（任意）</label><select id="mapDead"></select></div>
+        <div class="field"><label>💭 「なぜ叶えたい」の列（任意）</label><select id="mapWhy"></select></div>
+        <label class="imp-check"><input type="checkbox" id="mapHeader" /> 1行目は見出し（読み飛ばす）</label>
+      </div>
+      <div class="imp-preview" id="impPreview" style="display:none; margin-top:12px"></div>
+      <div class="modal-actions">
+        <button class="btn" onclick="closeImport()">キャンセル</button>
+        <button class="btn primary" id="impDoBtn" onclick="doImport()" style="display:none">この内容で取り込む</button>
       </div>
     </div>
   </div>
@@ -599,6 +629,215 @@ async function importJson(ev){
   r.readAsText(file); ev.target.value = "";
 }
 
+/* ---------- スプレッドシート取込（Excel/CSV） ---------- */
+let impRows = [];
+let impItems = [];
+let impMode = "sheet";   // "sheet" | "md"
+function openImport(){
+  impRows = []; impItems = []; impMode = "sheet";
+  document.getElementById("impFileName").textContent = "";
+  document.getElementById("impFile").value = "";
+  document.getElementById("impMap").style.display = "none";
+  document.getElementById("impPreview").style.display = "none";
+  document.getElementById("impDoBtn").style.display = "none";
+  document.getElementById("importBg").classList.add("open");
+}
+function closeImport(){ document.getElementById("importBg").classList.remove("open"); }
+
+function onImpFile(ev){
+  const file = ev.target.files[0]; if(!file) return;
+  document.getElementById("impFileName").textContent = file.name;
+  const isMd = /\.(md|markdown|txt)$/i.test(file.name);
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      if(isMd){
+        impMode = "md";
+        impItems = parseMarkdownDreams(e.target.result);
+        if(!impItems.length){ alert("取り込める箇条書きが見つかりませんでした"); return; }
+        document.getElementById("impMap").style.display = "none";
+        document.getElementById("impPreview").style.display = "block";
+        document.getElementById("impDoBtn").style.display = "inline-block";
+        updateMdPreview();
+      } else {
+        if(typeof XLSX === "undefined"){ alert("読み込みライブラリを取得できませんでした。ネット接続を確認してね"); return; }
+        const wb = XLSX.read(new Uint8Array(e.target.result), { type:"array" });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        impRows = XLSX.utils.sheet_to_json(ws, { header:1, blankrows:false, defval:"" });
+        if(!impRows.length){ alert("データが空でした"); return; }
+        setupMapping();
+      }
+    } catch(err){ console.error(err); alert("ファイルを読み込めませんでした（.xlsx / .csv / .md を選んでね）"); }
+  };
+  if(isMd) reader.readAsText(file); else reader.readAsArrayBuffer(file);
+}
+
+/* Markdown（Notionエクスポート等）の箇条書きを夢に変換。
+   「3ヶ月以内」「今年」「3年以内」等の見出し行で期限を切り替える */
+function periodToDeadline(line){
+  const s = String(line).replace(/\s/g, "");
+  if(!/以内|以降|まで|今年|来年|年内|ヶ月|か月|カ月|今月|来月|\d年/.test(s)) return null;
+  if(/ヶ月|か月|カ月|今月|来月|今年|来年|年内/.test(s)) return "1年以内";
+  if(/10年|１０年/.test(s)) return "10年以内";
+  if(/[5-9]年|[５-９]年/.test(s)) return "10年以内";
+  if(/[34]年|[３４]年/.test(s)) return "3年以内";
+  if(/[12]年|[１２]年/.test(s)) return "1年以内";
+  return null;
+}
+function parseMarkdownDreams(text){
+  const lines = String(text).split(/\r?\n/);
+  let cur = "いつか";
+  const items = [];
+  for(const raw of lines){
+    const line = raw.trim();
+    if(!line) continue;
+    if(/^#{1,6}\s/.test(line)) continue; // 見出し(# 夢リスト)は無視
+    const m = line.match(/^(?:[-*+]|\d+[.)])\s+(.*)$/);
+    if(m){
+      let t = m[1].replace(/\*\*(.*?)\*\*/g, "$1").replace(/`([^`]*)`/g, "$1").replace(/^\[[ xX]\]\s*/, "").trim();
+      if(!t) continue;
+      items.push({ text: t.slice(0,120), category: guessCategory(t), deadline: cur, why: "" });
+    } else {
+      const dl = periodToDeadline(line);
+      if(dl) cur = dl;   // 期限見出し。それ以外の非リスト行は無視
+    }
+  }
+  return items;
+}
+function updateMdPreview(){
+  const el = document.getElementById("impPreview");
+  const samples = impItems.slice(0,4).map(d=>{ const c=catOf(d.category); return "・"+d.text.slice(0,24)+" 〔"+c.emoji+c.label+"/"+d.deadline+"〕"; });
+  el.innerHTML = `<b style="color:var(--gold)">${impItems.length}件</b> を取り込みます<br>` + samples.map(escapeHtml).join("<br>") + (impItems.length>4 ? "<br>…ほか" : "");
+}
+
+function detectHeader(header){
+  const kw = ["夢","やりたい","内容","タイトル","目標","リスト","カテゴリ","分類","ジャンル","種類","期限","いつ","期日","なぜ","理由","目的","category","deadline","why","dream"];
+  return (header||[]).some(c => { const s=String(c||"").toLowerCase(); return s && kw.some(k=>s.includes(k.toLowerCase())); });
+}
+function guessCol(cols, header, looksHeader, keywords, required){
+  if(looksHeader){
+    for(let i=0;i<cols;i++){ const h=String(header[i]||"").toLowerCase(); if(h && keywords.some(k=>h.includes(k.toLowerCase()))) return i; }
+  }
+  if(required){
+    let best=0, bestAvg=-1;
+    for(let i=0;i<cols;i++){
+      let total=0,n=0;
+      for(let r=(looksHeader?1:0);r<impRows.length;r++){ total += String((impRows[r]||[])[i]||"").trim().length; n++; }
+      const avg = n? total/n : 0;
+      if(avg>bestAvg){ bestAvg=avg; best=i; }
+    }
+    return best;
+  }
+  return -1;
+}
+function setupMapping(){
+  const cols = Math.max(...impRows.map(r=>r.length), 1);
+  const header = impRows[0]||[];
+  const looksHeader = detectHeader(header);
+  document.getElementById("mapHeader").checked = looksHeader;
+  const colName = (i) => (looksHeader && String(header[i]||"").trim()) ? String(header[i]).trim() : ("列"+(i+1));
+  let baseOpts = "";
+  for(let i=0;i<cols;i++) baseOpts += `<option value="${i}">${escapeHtml(colName(i))}</option>`;
+  const noneOpt = '<option value="-1">（読み込まない）</option>';
+  document.getElementById("mapText").innerHTML = baseOpts;
+  document.getElementById("mapCat").innerHTML  = noneOpt + baseOpts;
+  document.getElementById("mapDead").innerHTML = noneOpt + baseOpts;
+  document.getElementById("mapWhy").innerHTML  = noneOpt + baseOpts;
+  document.getElementById("mapText").value = guessCol(cols, header, looksHeader, ["夢","やりたい","内容","タイトル","目標","リスト","dream","wish","こと"], true);
+  document.getElementById("mapCat").value  = guessCol(cols, header, looksHeader, ["カテゴリ","分類","ジャンル","category","種類"], false);
+  document.getElementById("mapDead").value = guessCol(cols, header, looksHeader, ["期限","いつ","期日","deadline","時期","年"], false);
+  document.getElementById("mapWhy").value  = guessCol(cols, header, looksHeader, ["なぜ","理由","why","動機","目的"], false);
+  ["mapText","mapCat","mapDead","mapWhy","mapHeader"].forEach(id => document.getElementById(id).onchange = updateImpPreview);
+  impMode = "sheet";
+  document.getElementById("impMap").style.display = "block";
+  document.getElementById("impPreview").style.display = "block";
+  document.getElementById("impDoBtn").style.display = "inline-block";
+  updateImpPreview();
+}
+function guessCategory(raw){
+  const s = String(raw||"").toLowerCase().trim();
+  if(!s) return "self";
+  for(const c of CATEGORIES){ if(s.includes(c.label.toLowerCase())) return c.key; }
+  const map = [
+    ["travel",["旅","travel","海外","観光","旅行"]],
+    ["money",["金","貯金","資産","年収","収入","億","万円","money","投資","資金"]],
+    ["life",["家","暮ら","住","引っ越","マイホーム","部屋","車","home"]],
+    ["health",["健康","体","ダイエット","運動","筋トレ","マラソン","痩","health","走"]],
+    ["family",["家族","子ど","親","夫","妻","結婚","恋","family","パートナー"]],
+    ["work",["仕事","事業","会社","起業","ビジネス","キャリア","work","独立","売上"]],
+    ["learn",["学","勉強","資格","スキル","英語","読書","learn","習"]],
+    ["give",["寄付","貢献","ボランティア","恩返","give","社会"]],
+    ["fun",["趣味","遊","ゲーム","映画","音楽","fun","ライブ"]],
+  ];
+  for(const [key,kws] of map){ if(kws.some(k=>s.includes(k.toLowerCase()))) return key; }
+  return "self";
+}
+function guessDeadline(raw){
+  const s = String(raw||"");
+  if(/10\s*年|１０\s*年/.test(s)) return "10年以内";
+  if(/[5-9]\s*年|[５-９]\s*年/.test(s)) return "10年以内";
+  if(/[34]\s*年|[３４]\s*年/.test(s)) return "3年以内";
+  if(/[12]\s*年|[１２]\s*年|今年|来年/.test(s)) return "1年以内";
+  return "いつか";
+}
+function updateImpPreview(){
+  const startRow = document.getElementById("mapHeader").checked ? 1 : 0;
+  const ti = +document.getElementById("mapText").value;
+  const ci = +document.getElementById("mapCat").value;
+  let count = 0; const samples = [];
+  for(let r=startRow; r<impRows.length; r++){
+    const row = impRows[r]||[];
+    const text = String(row[ti]!=null?row[ti]:"").trim();
+    if(!text) continue;
+    count++;
+    if(samples.length<3){ const c = catOf((ci>=0 && String(row[ci]||"").trim()) ? guessCategory(row[ci]) : guessCategory(text)); samples.push("・" + text.slice(0,26) + " 〔"+c.emoji+c.label+"〕"); }
+  }
+  const el = document.getElementById("impPreview");
+  el.innerHTML = count ? (`<b style="color:var(--gold)">${count}件</b> を取り込みます<br>` + samples.map(escapeHtml).join("<br>")) : "取り込める行が見つかりません（列の指定を見直してね）";
+}
+async function doImport(){
+  let items;
+  if(impMode==="md"){
+    items = impItems;
+  } else {
+    const startRow = document.getElementById("mapHeader").checked ? 1 : 0;
+    const ti = +document.getElementById("mapText").value;
+    const ci = +document.getElementById("mapCat").value;
+    const di = +document.getElementById("mapDead").value;
+    const wi = +document.getElementById("mapWhy").value;
+    if(ti < 0){ alert("「夢」の列を選んでね"); return; }
+    items = [];
+    for(let r=startRow; r<impRows.length; r++){
+      const row = impRows[r]||[];
+      const text = String(row[ti]!=null?row[ti]:"").trim();
+      if(!text) continue;
+      items.push({
+        text: text.slice(0,120),
+        category: (ci>=0 && String(row[ci]||"").trim()) ? guessCategory(row[ci]) : guessCategory(text),
+        deadline: di>=0 ? guessDeadline(row[di]) : "いつか",
+        why: wi>=0 ? String(row[wi]||"").trim() : ""
+      });
+    }
+  }
+  if(!items || !items.length){ alert("取り込める夢が見つかりませんでした"); return; }
+  await commitImport(items);
+}
+async function commitImport(items){
+  if(mode==="cloud"){
+    const base = nextSort();
+    const rows = items.map((d,i)=>({ text:d.text, category:d.category, deadline:d.deadline, why:d.why, done:false, done_date:null, sort:base+i }));
+    const { error } = await sb.from("dreams").insert(rows);
+    if(error){ alert("取り込みに失敗しました"); console.error(error); return; }
+    await dbLoad();
+  } else {
+    let s = nextSort();
+    items.forEach(d => dreams.push({ id:uid(), text:d.text, category:d.category, deadline:d.deadline, why:d.why, done:false, doneDate:null, sort:s++ }));
+    save();
+  }
+  closeImport(); render();
+  alert(items.length + "件の夢を取り込みました 🌠");
+}
+
 /* ---------- 認証 ---------- */
 function showAuth(){ document.getElementById("authScreen").classList.add("open"); document.querySelector(".wrap").style.display = "none"; }
 function hideAuth(){ document.getElementById("authScreen").classList.remove("open"); document.querySelector(".wrap").style.display = "block"; }
@@ -716,6 +955,7 @@ async function init(){
   buildModalControls();
   setAuthMode("login");
   document.getElementById("modalBg").addEventListener("click", e => { if(e.target.id==="modalBg") closeModal(); });
+  document.getElementById("importBg").addEventListener("click", e => { if(e.target.id==="importBg") closeImport(); });
   document.getElementById("mText").addEventListener("keydown", e => { if(e.key==="Enter"){ e.preventDefault(); saveDream(); } });
   document.getElementById("authPass").addEventListener("keydown", e => { if(e.key==="Enter") submitAuth(); });
 
