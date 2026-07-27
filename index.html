@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>夢リスト100</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --bg-0: #0a0b1e;
+    --bg-1: #14153a;
+    --panel: rgba(255,255,255,.055);
+    --panel-2: rgba(255,255,255,.09);
+    --stroke: rgba(255,255,255,.14);
+    --text: #eef1ff;
+    --text-soft: #9aa0cc;
+    --cyan: #4fe3d0;
+    --violet: #9a7bff;
+    --pink: #ff77c8;
+    --gold: #ffd36b;
+    --grad: linear-gradient(120deg, #4fe3d0, #9a7bff 55%, #ff77c8);
+    --glow: 0 8px 30px rgba(120, 90, 255, .35);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: "Noto Sans JP", system-ui, sans-serif;
+    color: var(--text);
+    background: var(--bg-0);
+    min-height: 100vh;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+  .sky {
+    position: fixed; inset: 0; z-index: -2;
+    background:
+      radial-gradient(1200px 700px at 78% -8%, #2a2270 0%, transparent 55%),
+      radial-gradient(1000px 800px at 12% 108%, #123a52 0%, transparent 55%),
+      linear-gradient(180deg, var(--bg-1), var(--bg-0) 70%);
+  }
+  .stars {
+    position: fixed; inset: 0; z-index: -1; pointer-events: none;
+    background-image:
+      radial-gradient(1.5px 1.5px at 20% 30%, #fff, transparent),
+      radial-gradient(1.5px 1.5px at 70% 20%, #cfe6ff, transparent),
+      radial-gradient(1px 1px at 40% 70%, #fff, transparent),
+      radial-gradient(1.5px 1.5px at 85% 60%, #ffe9c7, transparent),
+      radial-gradient(1px 1px at 55% 45%, #fff, transparent),
+      radial-gradient(1px 1px at 10% 80%, #cfe6ff, transparent),
+      radial-gradient(1.5px 1.5px at 90% 90%, #fff, transparent),
+      radial-gradient(1px 1px at 30% 15%, #fff, transparent);
+    opacity: .5;
+    animation: twinkle 5s ease-in-out infinite alternate;
+  }
+  @keyframes twinkle { from { opacity:.35 } to { opacity:.65 } }
+
+  #shareBanner {
+    display: none;
+    background: var(--grad);
+    color: #10122c; font-weight: 700;
+    text-align: center; padding: 11px 16px;
+    position: sticky; top: 0; z-index: 40;
+  }
+  #shareBanner button {
+    margin-left: 12px; border: none; border-radius: 999px;
+    background: #10122c; color: #fff; font-weight: 700;
+    padding: 6px 16px; cursor: pointer; font-family: inherit;
+  }
+
+  .wrap { max-width: 1000px; margin: 0 auto; padding: 26px 18px 90px; }
+
+  header.hero { text-align: center; padding: 14px 0 6px; }
+  .kicker { letter-spacing: .42em; font-size: 11px; color: var(--cyan); font-weight: 700; text-transform: uppercase; margin-bottom: 8px; }
+  h1 {
+    font-family: "Zen Kaku Gothic New", sans-serif; font-weight: 900;
+    margin: 0; font-size: 46px; letter-spacing: .02em; line-height: 1.1;
+  }
+  h1 .num {
+    background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent;
+    filter: drop-shadow(0 0 18px rgba(154,123,255,.5));
+  }
+  .subtitle { color: var(--text-soft); margin: 12px 0 0; font-size: 14px; }
+  .epigraph { font-family: "Zen Kaku Gothic New", sans-serif; margin: 14px 0 0; font-size: 15px; font-weight: 700; letter-spacing: .16em;
+    background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent;
+    filter: drop-shadow(0 0 12px rgba(154,123,255,.35)); }
+
+  .meter {
+    margin: 22px auto 0; max-width: 680px;
+    background: var(--panel); border: 1px solid var(--stroke);
+    border-radius: 20px; padding: 18px 22px; backdrop-filter: blur(12px);
+  }
+  .meter-top { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+  .meter-count { font-family: "Zen Kaku Gothic New", sans-serif; font-size: 16px; font-weight: 700; color: var(--text-soft); }
+  .meter-count b { font-size: 40px; color: var(--gold); font-weight: 900; filter: drop-shadow(0 0 14px rgba(255,211,107,.5)); }
+  .meter-msg { color: var(--cyan); font-size: 13px; font-weight: 700; text-align: right; }
+  .bar { height: 12px; background: rgba(255,255,255,.08); border-radius: 999px; margin-top: 12px; overflow: hidden; }
+  .bar > i { display: block; height: 100%; width: 0; background: var(--grad); border-radius: 999px;
+    box-shadow: 0 0 16px rgba(154,123,255,.7); transition: width .7s cubic-bezier(.2,.9,.2,1); }
+  .stamps { margin-top: 10px; font-size: 16px; letter-spacing: 3px; min-height: 22px; }
+
+  .toolbar { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; align-items: center; margin: 24px 0 6px; }
+  .btn {
+    border: 1px solid var(--stroke); background: var(--panel-2); color: var(--text);
+    border-radius: 999px; padding: 11px 20px; font-family: "Zen Kaku Gothic New", sans-serif; font-size: 14px;
+    font-weight: 700; cursor: pointer; transition: transform .12s, box-shadow .2s, background .2s;
+    backdrop-filter: blur(8px);
+  }
+  .btn:hover { transform: translateY(-2px); background: rgba(255,255,255,.14); }
+  .btn.primary { background: var(--grad); color: #10122c; border: none; box-shadow: var(--glow); }
+  .btn.primary:hover { box-shadow: 0 12px 36px rgba(154,123,255,.55); }
+  .acct { font-size: 12px; color: var(--text-soft); }
+
+  .tabs { display: flex; gap: 9px; flex-wrap: wrap; justify-content: center; margin: 22px 0 24px; }
+  .tab {
+    border: 1px solid var(--stroke); background: var(--panel); color: var(--text-soft);
+    border-radius: 999px; padding: 8px 15px; font-size: 13px; font-weight: 700;
+    cursor: pointer; display: inline-flex; align-items: center; gap: 7px; font-family: inherit;
+    transition: transform .1s, border-color .2s, color .2s;
+  }
+  .tab:hover { transform: translateY(-1px); color: var(--text); }
+  .tab .cnt { background: rgba(255,255,255,.1); border-radius: 999px; padding: 1px 8px; font-size: 11px; }
+  .tab.active { color: #fff; border-color: transparent; box-shadow: 0 6px 18px rgba(0,0,0,.35); }
+
+  /* カード（コンパクト密集レイアウト） */
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
+  .card {
+    background: var(--panel); border: 1px solid var(--stroke);
+    border-radius: 12px; padding: 9px 12px 9px 13px; position: relative;
+    backdrop-filter: blur(12px);
+    display: flex; flex-direction: column; overflow: hidden;
+    transition: transform .12s, border-color .25s, box-shadow .25s;
+  }
+  .card::before { content:""; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--catcolor); opacity:.95; }
+  .card:hover { transform: translateY(-2px); border-color: rgba(255,255,255,.28); }
+  .card.done { border-color: rgba(255,211,107,.5); box-shadow: 0 0 16px rgba(255,211,107,.16); }
+
+  .card .head { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; }
+  .card .catchip { font-size: 10px; font-weight: 700; color: var(--catcolor); letter-spacing: .02em; display: inline-flex; align-items: center; gap: 4px; }
+  .card .dead { margin-left: auto; font-size: 10.5px; color: var(--text-soft); white-space: nowrap; }
+  .card .text { font-size: 14px; line-height: 20px; margin: 0; word-break: break-word; font-weight: 500; cursor: pointer; }
+  .card.done .text { color: var(--text-soft); }
+
+  .card .why { display: none; font-size: 12px; color: #c6caf2; margin-top: 7px; padding-top: 7px; line-height: 18px; border-top: 1px dashed rgba(255,255,255,.14); }
+  .card .why.show { display: block; }
+  .card .why::before { content:"💭 "; }
+
+  .card .row { display: flex; align-items: center; gap: 4px; margin-top: 8px; }
+  .check { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; font-size: 12px; font-weight: 700; user-select: none; color: var(--text-soft); }
+  .check .box { width: 18px; height: 18px; border: 2px solid var(--stroke); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; transition: .2s; }
+  .card.done .check { color: var(--gold); }
+  .card.done .check .box { background: var(--gold); border-color: var(--gold); color: #10122c; box-shadow: 0 0 12px rgba(255,211,107,.7); }
+  .card .spacer { margin-left: auto; }
+  .iconbtn { border: none; background: transparent; color: var(--text-soft); cursor: pointer; font-size: 13px; font-family: inherit; opacity: .6; padding: 3px 5px; border-radius: 7px; line-height: 1; }
+  .iconbtn:hover { opacity: 1; background: rgba(255,255,255,.08); }
+  .iconbtn.on { opacity: 1; color: var(--violet); background: rgba(154,123,255,.16); }
+  .card .glowstar { position: absolute; right: 8px; top: 6px; font-size: 15px; filter: drop-shadow(0 0 8px rgba(255,211,107,.9)); pointer-events: none; }
+
+  .add-card {
+    border: 1.5px dashed var(--stroke); background: rgba(255,255,255,.02); border-radius: 12px;
+    min-height: 62px; display: flex; align-items: center; justify-content: center; gap: 8px;
+    color: var(--text-soft); font-weight: 700; font-size: 14px; cursor: pointer;
+    font-family: "Zen Kaku Gothic New", sans-serif; transition: .2s;
+  }
+  .add-card:hover { background: rgba(154,123,255,.1); color: #fff; border-color: var(--violet); }
+
+  /* モーダル */
+  .modal-bg { display: none; position: fixed; inset: 0; background: rgba(6,7,20,.72); backdrop-filter: blur(4px); z-index: 50; align-items: center; justify-content: center; padding: 16px; }
+  .modal-bg.open { display: flex; }
+  .modal {
+    background: linear-gradient(180deg, #1b1c44, #141534);
+    border: 1px solid var(--stroke); border-radius: 22px; padding: 24px; width: 100%; max-width: 450px;
+    box-shadow: 0 30px 80px rgba(0,0,0,.6);
+  }
+  .modal h3 { font-family: "Zen Kaku Gothic New", sans-serif; font-weight: 900; margin: 0 0 18px; font-size: 22px; }
+  .field { margin-bottom: 16px; }
+  .field label { display: block; font-size: 13px; font-weight: 700; margin-bottom: 7px; color: var(--text-soft); }
+  .field input[type=text], .field input[type=password], .field textarea, .field select {
+    width: 100%; border: 1px solid var(--stroke); border-radius: 12px; padding: 11px 13px;
+    font-family: inherit; font-size: 15px; background: rgba(255,255,255,.05); color: var(--text);
+  }
+  .field input::placeholder, .field textarea::placeholder { color: #6f74a3; }
+  .field input:focus, .field textarea:focus, .field select:focus { outline: none; border-color: var(--violet); box-shadow: 0 0 0 3px rgba(154,123,255,.25); }
+  .field select option { background: #1b1c44; }
+  .field textarea { resize: vertical; min-height: 58px; }
+  .seg { display: flex; gap: 7px; flex-wrap: wrap; }
+  .seg button { border: 1px solid var(--stroke); background: rgba(255,255,255,.04); border-radius: 999px; padding: 8px 14px; font-family: inherit; font-size: 13px; cursor: pointer; color: var(--text-soft); font-weight: 700; transition: .15s; }
+  .seg button.on { background: var(--grad); color: #10122c; border-color: transparent; }
+  .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 8px; }
+
+  /* ログイン画面 */
+  #authScreen { display: none; position: fixed; inset: 0; z-index: 45; align-items: center; justify-content: center; padding: 16px; }
+  #authScreen.open { display: flex; }
+  .auth-card { background: linear-gradient(180deg, #1b1c44, #141534); border: 1px solid var(--stroke); border-radius: 24px; padding: 30px 26px; width: 100%; max-width: 392px; box-shadow: 0 30px 80px rgba(0,0,0,.6); text-align: center; }
+  .auth-card h2 { font-family: "Zen Kaku Gothic New", sans-serif; font-weight: 900; margin: 4px 0 0; font-size: 32px; }
+  .auth-card .num { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .auth-tabs { display: flex; gap: 8px; justify-content: center; margin: 20px 0 16px; }
+  .auth-tabs .btn { flex: 1; }
+  .auth-tabs .btn.on { background: var(--grad); color: #10122c; border: none; }
+  .auth-card .field { margin-bottom: 12px; }
+  .auth-card .field input { text-align: center; }
+  .auth-msg { min-height: 18px; font-size: 12px; margin-top: 12px; line-height: 1.5; }
+  .auth-msg.err { color: var(--pink); }
+  .auth-msg.ok { color: var(--cyan); }
+
+  .empty-note { text-align: center; color: var(--text-soft); padding: 40px; font-size: 14px; }
+  footer { text-align: center; color: var(--text-soft); font-size: 12px; margin-top: 46px; opacity: .7; }
+  #confetti { position: fixed; inset: 0; pointer-events: none; z-index: 60; }
+
+  @media (max-width: 520px) {
+    h1 { font-size: 34px; }
+    .meter-count b { font-size: 30px; }
+    .meter-msg { font-size: 11px; }
+  }
+</style>
+</head>
+<body>
+  <div class="sky"></div>
+  <div class="stars"></div>
+
+  <div id="shareBanner">
+    <span id="shareBannerText">共有された夢リストを見ています（閲覧専用）</span>
+    <button onclick="location.href = location.origin + location.pathname">自分の夢リスト100を作る →</button>
+  </div>
+
+  <!-- ログイン画面 -->
+  <div id="authScreen">
+    <div class="auth-card">
+      <div class="kicker">★ Dream Constellation ★</div>
+      <h2>夢リスト<span class="num">100</span></h2>
+      <p class="epigraph" style="margin:10px 0 0">“ 思考は現実化する ”</p>
+      <p class="subtitle" style="margin:8px 0 0">ログインすると、自分の夢リストが表示されます</p>
+      <div class="auth-tabs">
+        <button class="btn" id="tabLogin" onclick="setAuthMode('login')">ログイン</button>
+        <button class="btn" id="tabSignup" onclick="setAuthMode('signup')">新規登録</button>
+      </div>
+      <div class="field"><input type="text" id="authEmail" placeholder="メールアドレス" autocomplete="email" /></div>
+      <div class="field"><input type="password" id="authPass" placeholder="パスワード（6文字以上）" autocomplete="current-password" /></div>
+      <button class="btn primary" style="width:100%" id="authSubmit" onclick="submitAuth()">ログイン</button>
+      <div class="auth-msg" id="authMsg"></div>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <header class="hero">
+      <div class="kicker">★ Dream Constellation ★</div>
+      <h1>夢リスト<span class="num">100</span></h1>
+      <p class="epigraph">“ 思考は現実化する ”</p>
+      <p class="subtitle">叶えるたびに、夜空に夢の星が灯っていく</p>
+      <div class="meter">
+        <div class="meter-top">
+          <div class="meter-count"><b id="doneCount">0</b> / 100 の夢を達成</div>
+          <div class="meter-msg" id="meterMsg">最初の夢を書いてみよう ✏️</div>
+        </div>
+        <div class="bar"><i id="barFill"></i></div>
+        <div class="stamps" id="stamps"></div>
+      </div>
+    </header>
+
+    <div class="toolbar" id="toolbar">
+      <button class="btn primary" onclick="openAdd()">＋ 夢を追加</button>
+      <button class="btn" onclick="shareList()">🔗 共有リンクをコピー</button>
+      <button class="btn" onclick="exportJson()">⬇ バックアップ</button>
+      <label class="btn" style="cursor:pointer">⬆ 読み込み<input type="file" accept=".json" style="display:none" onchange="importJson(event)"></label>
+      <span class="acct" id="acct"></span>
+      <button class="btn" id="logoutBtn" style="display:none" onclick="logout()">ログアウト</button>
+    </div>
+
+    <div class="tabs" id="tabs"></div>
+    <div class="grid" id="grid"></div>
+    <div class="empty-note" id="emptyNote" style="display:none">このカテゴリはまだ空っぽ。「＋」から夢を書いてみよう 🌱</div>
+
+    <footer id="footNote">プロトタイプ版 · データはこの端末に自動保存されます</footer>
+  </div>
+
+  <!-- 追加/編集モーダル -->
+  <div class="modal-bg" id="modalBg">
+    <div class="modal">
+      <h3 id="modalTitle">夢を追加</h3>
+      <div class="field">
+        <label>✍️ どんな夢？</label>
+        <input type="text" id="mText" placeholder="例：家族でハワイに行く" maxlength="120" />
+      </div>
+      <div class="field">
+        <label>🏷️ カテゴリ</label>
+        <select id="mCat"></select>
+      </div>
+      <div class="field">
+        <label>⏳ いつまでに？</label>
+        <div class="seg" id="mDeadline"></div>
+      </div>
+      <div class="field">
+        <label>💭 なぜ叶えたい？（任意）</label>
+        <textarea id="mWhy" placeholder="子どもに海を見せたいから"></textarea>
+      </div>
+      <div class="modal-actions">
+        <button class="btn" onclick="closeModal()">キャンセル</button>
+        <button class="btn primary" onclick="saveDream()">保存する</button>
+      </div>
+    </div>
+  </div>
+
+  <canvas id="confetti"></canvas>
+
+<script>
+/* ============================================================
+   Supabase 設定 — ↓ここに貼るだけで「ログイン＆本当の共有」が有効になります
+   空のままなら、この端末に保存するローカルモードで動きます
+   ============================================================ */
+const SUPABASE_URL = "https://bsfagflbmrbqheedlsyw.supabase.co";       // 例: https://xxxxxxxx.supabase.co
+const SUPABASE_ANON_KEY = "sb_publishable_iFJlKt0IjmWFNqTnKJ_GYg_lU14Zvf5";  // publishable key（ブラウザ公開OK）
+
+const CLOUD = /^https?:\/\//.test(SUPABASE_URL) && SUPABASE_ANON_KEY.length > 20;
+let sb = null;
+if (CLOUD) { try { sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY); } catch(e){ console.error("Supabase初期化に失敗", e); } }
+
+const CATEGORIES = [
+  { key: "work",   label: "仕事・事業",   emoji: "💼", color: "#4fe3d0" },
+  { key: "money",  label: "お金",         emoji: "💰", color: "#ffd36b" },
+  { key: "life",   label: "暮らし・家",   emoji: "🏠", color: "#ff9d6b" },
+  { key: "health", label: "健康・体",     emoji: "🧍", color: "#6be39a" },
+  { key: "family", label: "家族・人",     emoji: "👨‍👩‍👧", color: "#ff77c8" },
+  { key: "travel", label: "旅行・体験",   emoji: "✈️", color: "#63b8ff" },
+  { key: "learn",  label: "学び・スキル", emoji: "🎯", color: "#9a7bff" },
+  { key: "give",   label: "誰かのため",   emoji: "🎁", color: "#ff6b8e" },
+  { key: "fun",    label: "趣味・遊び",   emoji: "🎮", color: "#7be0d8" },
+  { key: "self",   label: "なりたい自分", emoji: "🌟", color: "#c9a3ff" },
+];
+const DEADLINES = ["1年以内", "3年以内", "10年以内", "いつか"];
+const STORE_KEY = "yumeList100_v1";
+
+let dreams = [];
+let activeTab = "all";
+let editingId = null;
+let modalDeadline = "いつか";
+let readOnly = false;
+let mode = "local";          // "local" | "cloud" | "shared"
+let session = null;
+let authMode = "login";
+
+function catOf(key){ return CATEGORIES.find(c => c.key === key) || CATEGORIES[0]; }
+function uid(){ return "d" + Math.random().toString(36).slice(2,9); }
+function nextSort(){ return dreams.length ? Math.max(...dreams.map(d=>d.sort||0)) + 1 : 0; }
+
+/* ---------- ローカル保存 ---------- */
+function save(){ if(mode==="local") localStorage.setItem(STORE_KEY, JSON.stringify(dreams)); }
+function loadLocal(){ try { dreams = JSON.parse(localStorage.getItem(STORE_KEY)) || []; } catch(e){ dreams = []; } }
+
+/* ---------- Supabase 行変換 ---------- */
+function fromRow(r){ return { id:r.id, text:r.text, category:r.category, deadline:r.deadline, why:r.why||"", done:!!r.done, doneDate:r.done_date, sort:r.sort }; }
+function toRow(d){ return { text:d.text, category:d.category, deadline:d.deadline, why:d.why, done:d.done, done_date:d.doneDate, sort:d.sort }; }
+
+async function dbLoad(){
+  const { data, error } = await sb.from("dreams").select("*").order("sort", { ascending:true });
+  if(error){ console.error(error); dreams=[]; return; }
+  dreams = (data||[]).map(fromRow);
+}
+async function dbInsert(d){ const { data, error } = await sb.from("dreams").insert(toRow(d)).select().single(); if(error){ console.error(error); return null; } return data; }
+async function dbUpdate(d){ const { error } = await sb.from("dreams").update(toRow(d)).eq("id", d.id); if(error) console.error(error); }
+async function dbDelete(id){ const { error } = await sb.from("dreams").delete().eq("id", id); if(error) console.error(error); }
+
+/* ---------- Unicode-safe base64（ローカル共有用） ---------- */
+function b64encode(str){ return btoa(unescape(encodeURIComponent(str))); }
+function b64decode(str){ return decodeURIComponent(escape(atob(str))); }
+
+/* ---------- 描画 ---------- */
+function renderTabs(){
+  const tabs = document.getElementById("tabs");
+  tabs.innerHTML = "";
+  const all = document.createElement("button");
+  all.className = "tab" + (activeTab==="all"?" active":"");
+  if(activeTab==="all"){ all.style.background = "linear-gradient(120deg,#4fe3d0,#9a7bff,#ff77c8)"; all.style.color = "#10122c"; }
+  all.innerHTML = `📚 すべて <span class="cnt">${dreams.length}</span>`;
+  all.onclick = () => { activeTab="all"; render(); };
+  tabs.appendChild(all);
+  CATEGORIES.forEach(c => {
+    const n = dreams.filter(d => d.category===c.key).length;
+    const b = document.createElement("button");
+    b.className = "tab" + (activeTab===c.key?" active":"");
+    if(activeTab===c.key){ b.style.background = c.color; b.style.color = "#10122c"; }
+    b.innerHTML = `${c.emoji} ${c.label} <span class="cnt">${n}</span>`;
+    b.onclick = () => { activeTab=c.key; render(); };
+    tabs.appendChild(b);
+  });
+}
+function renderMeter(){
+  const done = dreams.filter(d => d.done).length;
+  document.getElementById("doneCount").textContent = done;
+  document.getElementById("barFill").style.width = Math.min(100, done) + "%";
+  const stamps = document.getElementById("stamps");
+  stamps.textContent = "✨".repeat(Math.min(done, 20)) + (done>20 ? ` +${done-20}` : "");
+  const msg = document.getElementById("meterMsg");
+  if(done===0) msg.textContent = dreams.length===0 ? "最初の夢を書いてみよう ✏️" : "叶えたら星を灯そう ✨";
+  else if(done<10) msg.textContent = "星が輝きはじめた ⭐";
+  else if(done<50) msg.textContent = "夜空がにぎやかになってきた 🌌";
+  else if(done<100) msg.textContent = "ゴールはもうすぐ 🌠";
+  else msg.textContent = "夢の星座、完成！🎊";
+}
+function render(){
+  renderTabs();
+  renderMeter();
+  const grid = document.getElementById("grid");
+  grid.innerHTML = "";
+  const list = activeTab==="all" ? dreams : dreams.filter(d => d.category===activeTab);
+  list.forEach(d => grid.appendChild(cardEl(d)));
+  document.getElementById("emptyNote").style.display = (list.length===0 && readOnly) ? "block" : "none";
+  if(!readOnly){
+    const add = document.createElement("button");
+    add.className = "add-card";
+    add.innerHTML = "＋ 夢を書く";
+    add.onclick = () => openAdd(activeTab==="all"?null:activeTab);
+    grid.appendChild(add);
+  }
+}
+function cardEl(d){
+  const c = catOf(d.category);
+  const el = document.createElement("div");
+  el.className = "card" + (d.done?" done":"");
+  el.style.setProperty("--catcolor", c.color);
+  el.innerHTML = `
+    ${d.done?'<span class="glowstar">🌟</span>':''}
+    <div class="head">
+      <span class="catchip">${c.emoji} ${c.label}</span>
+      <span class="dead">${d.done ? '✅ '+(d.doneDate||'達成') : '⏳ '+(d.deadline||'いつか')}</span>
+    </div>
+    <div class="text">${escapeHtml(d.text)}</div>
+    ${d.why?`<div class="why">${escapeHtml(d.why)}</div>`:''}
+    <div class="row">
+      <span class="check"><span class="box">${d.done?'✓':''}</span>${d.done?'達成！':'達成した'}</span>
+      <span class="spacer"></span>
+    </div>`;
+  if(!readOnly) el.querySelector(".check").onclick = () => toggleDone(d.id);
+  const row = el.querySelector(".row");
+  if(d.why){
+    const wbtn = document.createElement("button");
+    wbtn.className = "iconbtn"; wbtn.title = "なぜ叶えたい？"; wbtn.textContent = "💭";
+    const why = el.querySelector(".why");
+    wbtn.onclick = (e) => { e.stopPropagation(); const on = why.classList.toggle("show"); wbtn.classList.toggle("on", on); };
+    row.appendChild(wbtn);
+  }
+  if(!readOnly){
+    el.querySelector(".text").onclick = () => openEdit(d.id);
+    const del = document.createElement("button");
+    del.className = "iconbtn"; del.title = "削除"; del.textContent = "🗑";
+    del.onclick = async (e) => { e.stopPropagation(); if(confirm("この夢を削除する？")){ dreams = dreams.filter(x=>x.id!==d.id); render(); if(mode==="cloud") await dbDelete(d.id); else save(); } };
+    row.appendChild(del);
+  }
+  return el;
+}
+function escapeHtml(s){ return (s||"").replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+
+/* ---------- 追加/編集 ---------- */
+function buildModalControls(){
+  const sel = document.getElementById("mCat");
+  sel.innerHTML = CATEGORIES.map(c=>`<option value="${c.key}">${c.emoji} ${c.label}</option>`).join("");
+  const dd = document.getElementById("mDeadline");
+  dd.innerHTML = "";
+  DEADLINES.forEach(x => {
+    const b = document.createElement("button");
+    b.textContent = x;
+    b.onclick = () => { modalDeadline = x; [...dd.children].forEach(n=>n.classList.remove("on")); b.classList.add("on"); };
+    dd.appendChild(b);
+  });
+}
+function setDeadlineUI(v){
+  modalDeadline = v || "いつか";
+  const dd = document.getElementById("mDeadline");
+  [...dd.children].forEach(n => n.classList.toggle("on", n.textContent===modalDeadline));
+}
+function openAdd(catKey){
+  editingId = null;
+  document.getElementById("modalTitle").textContent = "夢を追加";
+  document.getElementById("mText").value = "";
+  document.getElementById("mWhy").value = "";
+  document.getElementById("mCat").value = catKey || CATEGORIES[0].key;
+  setDeadlineUI("いつか");
+  document.getElementById("modalBg").classList.add("open");
+  document.getElementById("mText").focus();
+}
+function openEdit(id){
+  const d = dreams.find(x=>x.id===id); if(!d) return;
+  editingId = id;
+  document.getElementById("modalTitle").textContent = "夢を編集";
+  document.getElementById("mText").value = d.text;
+  document.getElementById("mWhy").value = d.why||"";
+  document.getElementById("mCat").value = d.category;
+  setDeadlineUI(d.deadline);
+  document.getElementById("modalBg").classList.add("open");
+}
+function closeModal(){ document.getElementById("modalBg").classList.remove("open"); }
+async function saveDream(){
+  const text = document.getElementById("mText").value.trim();
+  if(!text){ alert("夢の内容を書いてね ✍️"); return; }
+  const category = document.getElementById("mCat").value;
+  const why = document.getElementById("mWhy").value.trim();
+  if(editingId){
+    const d = dreams.find(x=>x.id===editingId);
+    Object.assign(d, { text, category, why, deadline: modalDeadline });
+    closeModal(); render();
+    if(mode==="cloud") await dbUpdate(d); else save();
+  } else {
+    const d = { id: uid(), text, category, why, deadline: modalDeadline, done:false, doneDate:null, sort: nextSort() };
+    if(mode==="cloud"){ const row = await dbInsert(d); if(row) d.id = row.id; }
+    dreams.push(d);
+    closeModal(); render();
+    if(mode!=="cloud") save();
+  }
+}
+async function toggleDone(id){
+  const d = dreams.find(x=>x.id===id); if(!d) return;
+  d.done = !d.done;
+  d.doneDate = d.done ? new Date().toLocaleDateString("ja-JP") : null;
+  render();
+  if(d.done) burstConfetti();
+  if(mode==="cloud") await dbUpdate(d); else save();
+}
+
+/* ---------- 共有 ---------- */
+function copyUrl(url){
+  navigator.clipboard.writeText(url).then(
+    ()=> alert("共有リンクをコピーしました！\nこのURLを送ると、相手が閲覧専用で見られます 🔗"),
+    ()=> prompt("このURLをコピーして共有してね:", url)
+  );
+}
+async function shareList(){
+  if(dreams.length===0){ alert("先に夢を1つ以上書いてね ✍️"); return; }
+  const base = location.origin + location.pathname;
+  if(mode==="cloud"){
+    let { data: prof } = await sb.from("profiles").select("*").eq("id", session.user.id).maybeSingle();
+    if(!prof){ const ins = await sb.from("profiles").insert({ id: session.user.id }).select().single(); prof = ins.data; }
+    if(!prof){ alert("共有の準備に失敗しました。SQL設定を確認してね"); return; }
+    if(!prof.display_name){
+      const n = (prompt("共有時に表示する名前は？", (session.user.email||"").split("@")[0]) || "匿名").trim();
+      await sb.from("profiles").update({ display_name:n, is_shared:true }).eq("id", session.user.id);
+      prof.display_name = n; prof.is_shared = true;
+    } else if(!prof.is_shared){
+      await sb.from("profiles").update({ is_shared:true }).eq("id", session.user.id);
+    }
+    copyUrl(base + "#s=" + prof.share_token);
+  } else {
+    copyUrl(base + "#share=" + b64encode(JSON.stringify(dreams)));
+  }
+}
+async function tryShared(){
+  const hs = location.hash;
+  let m;
+  if((m = hs.match(/#s=([0-9a-fA-F-]{10,})/))){
+    if(!CLOUD || !sb) return false;
+    const { data, error } = await sb.rpc("get_shared_list", { token: m[1] });
+    if(error || !data || !data.length){ console.warn("共有リストを取得できません", error); return false; }
+    dreams = data.map(r=>({ id:uid(), text:r.text, category:r.category, deadline:r.deadline, why:r.why||"", done:!!r.done, doneDate:r.done_date }));
+    enterSharedUI(data[0].owner_name || "だれか");
+    render();
+    return true;
+  }
+  if((m = hs.match(/#share=(.+)$/))){
+    try { const arr = JSON.parse(b64decode(m[1])); if(Array.isArray(arr)){ dreams = arr; enterSharedUI("だれか"); render(); return true; } } catch(e){}
+  }
+  return false;
+}
+function enterSharedUI(owner){
+  mode = "shared"; readOnly = true;
+  document.getElementById("shareBannerText").textContent = `${owner}さんの夢リストを見ています（閲覧専用）`;
+  document.getElementById("shareBanner").style.display = "block";
+  document.getElementById("toolbar").style.display = "none";
+  document.getElementById("authScreen").classList.remove("open");
+  document.querySelector(".wrap").style.display = "block";
+}
+/* ---------- バックアップ ---------- */
+function exportJson(){
+  const blob = new Blob([JSON.stringify(dreams,null,2)], {type:"application/json"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = "yume-list-100.json"; a.click();
+}
+async function importJson(ev){
+  const file = ev.target.files[0]; if(!file) return;
+  const r = new FileReader();
+  r.onload = async () => {
+    try { const data = JSON.parse(r.result);
+      if(!Array.isArray(data)) return;
+      if(mode==="cloud"){
+        const rows = data.map((d,i)=>({ text:d.text, category:d.category||"work", deadline:d.deadline||"いつか", why:d.why||"", done:!!d.done, done_date:d.doneDate||null, sort:i }));
+        await sb.from("dreams").insert(rows); await dbLoad();
+      } else { dreams = data; save(); }
+      render(); alert("読み込みました 📖");
+    } catch(e){ alert("ファイルを読み込めませんでした"); }
+  };
+  r.readAsText(file); ev.target.value = "";
+}
+
+/* ---------- 認証 ---------- */
+function showAuth(){ document.getElementById("authScreen").classList.add("open"); document.querySelector(".wrap").style.display = "none"; }
+function hideAuth(){ document.getElementById("authScreen").classList.remove("open"); document.querySelector(".wrap").style.display = "block"; }
+function setAuthMode(m){
+  authMode = m;
+  document.getElementById("tabLogin").classList.toggle("on", m==="login");
+  document.getElementById("tabSignup").classList.toggle("on", m==="signup");
+  document.getElementById("authSubmit").textContent = m==="login" ? "ログイン" : "新規登録する";
+  authMsg("");
+}
+function authMsg(text, kind){ const el = document.getElementById("authMsg"); el.textContent = text||""; el.className = "auth-msg" + (kind?(" "+kind):""); }
+async function submitAuth(){
+  const email = document.getElementById("authEmail").value.trim();
+  const pass = document.getElementById("authPass").value;
+  if(!email || !pass){ authMsg("メールとパスワードを入力してね", "err"); return; }
+  authMsg("処理中…");
+  let res;
+  if(authMode==="signup") res = await sb.auth.signUp({ email, password: pass });
+  else res = await sb.auth.signInWithPassword({ email, password: pass });
+  if(res.error){ authMsg(translateAuthError(res.error.message), "err"); return; }
+  if(authMode==="signup" && !res.data.session){ authMsg("確認メールを送りました📩 メール内のリンクを開いてから、ログインしてね", "ok"); return; }
+  // 成功時は onAuthStateChange(SIGNED_IN) が続きを処理
+}
+function translateAuthError(msg){
+  if(/Invalid login/i.test(msg)) return "メールかパスワードが違います";
+  if(/already registered/i.test(msg)) return "このメールは登録済みです。ログインしてね";
+  if(/at least 6/i.test(msg)) return "パスワードは6文字以上にしてね";
+  if(/valid email/i.test(msg)) return "メールアドレスの形式を確認してね";
+  return msg;
+}
+async function logout(){ await sb.auth.signOut(); }
+function refreshAcct(){
+  const acct = document.getElementById("acct");
+  const lb = document.getElementById("logoutBtn");
+  if(mode==="cloud" && session){ acct.textContent = "👤 " + (session.user.email||""); lb.style.display = "inline-block"; }
+  else { acct.textContent = ""; lb.style.display = "none"; }
+}
+
+/* ---------- 紙吹雪 ---------- */
+function burstConfetti(){
+  const cv = document.getElementById("confetti");
+  const ctx = cv.getContext("2d");
+  cv.width = innerWidth; cv.height = innerHeight;
+  const colors = ["#4fe3d0","#9a7bff","#ff77c8","#ffd36b","#ffffff"];
+  const parts = Array.from({length:100}, ()=>({
+    x: innerWidth/2, y: innerHeight/3,
+    vx: (Math.random()-.5)*13, vy: (Math.random()-1)*13 - 3,
+    g: .34 + Math.random()*.2, s: 4+Math.random()*7,
+    c: colors[Math.floor(Math.random()*colors.length)],
+    rot: Math.random()*6, vr:(Math.random()-.5)*.4, star: Math.random()<.4
+  }));
+  let t=0;
+  (function anim(){
+    ctx.clearRect(0,0,cv.width,cv.height);
+    parts.forEach(p=>{ p.vy+=p.g; p.x+=p.vx; p.y+=p.vy; p.rot+=p.vr;
+      ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.rot); ctx.fillStyle=p.c;
+      ctx.shadowColor=p.c; ctx.shadowBlur=8;
+      if(p.star){ ctx.beginPath(); for(let i=0;i<5;i++){ ctx.lineTo(Math.cos((18+i*72)/180*Math.PI)*p.s, -Math.sin((18+i*72)/180*Math.PI)*p.s); ctx.lineTo(Math.cos((54+i*72)/180*Math.PI)*p.s*.5, -Math.sin((54+i*72)/180*Math.PI)*p.s*.5);} ctx.closePath(); ctx.fill(); }
+      else ctx.fillRect(-p.s/2,-p.s/2,p.s,p.s*.6);
+      ctx.restore(); });
+    t++; if(t<95) requestAnimationFrame(anim); else ctx.clearRect(0,0,cv.width,cv.height);
+  })();
+}
+
+/* ---------- 起動 ---------- */
+async function init(){
+  buildModalControls();
+  setAuthMode("login");
+  document.getElementById("modalBg").addEventListener("click", e => { if(e.target.id==="modalBg") closeModal(); });
+  document.getElementById("mText").addEventListener("keydown", e => { if(e.key==="Enter"){ e.preventDefault(); saveDream(); } });
+  document.getElementById("authPass").addEventListener("keydown", e => { if(e.key==="Enter") submitAuth(); });
+
+  // 共有リンクで開かれた場合を最優先
+  if(await tryShared()) return;
+
+  if(CLOUD && sb){
+    document.getElementById("footNote").textContent = "クラウド保存中 · どの端末からでも同じリストが見られます";
+    sb.auth.onAuthStateChange(async (event, s) => {
+      session = s;
+      if(event==="SIGNED_IN"){ mode="cloud"; hideAuth(); await dbLoad(); render(); refreshAcct(); }
+      else if(event==="SIGNED_OUT"){ mode="local"; session=null; dreams=[]; render(); refreshAcct(); showAuth(); }
+    });
+    const { data } = await sb.auth.getSession();
+    session = data.session;
+    if(session){ mode="cloud"; hideAuth(); await dbLoad(); render(); refreshAcct(); }
+    else { showAuth(); }
+  } else {
+    mode = "local"; loadLocal(); render();
+  }
+}
+init();
+</script>
+</body>
+</html>
