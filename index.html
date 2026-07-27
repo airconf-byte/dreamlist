@@ -11,13 +11,13 @@
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
   :root {
-    --bg-0: #0a0b1e;
-    --bg-1: #14153a;
-    --panel: rgba(255,255,255,.055);
-    --panel-2: rgba(255,255,255,.09);
-    --stroke: rgba(255,255,255,.14);
-    --text: #eef1ff;
-    --text-soft: #9aa0cc;
+    --bg-0: #2a2e64;
+    --bg-1: #3a3f86;
+    --panel: rgba(255,255,255,.09);
+    --panel-2: rgba(255,255,255,.14);
+    --stroke: rgba(255,255,255,.2);
+    --text: #f4f6ff;
+    --text-soft: #bcc0e6;
     --cyan: #4fe3d0;
     --violet: #9a7bff;
     --pink: #ff77c8;
@@ -38,9 +38,10 @@
   .sky {
     position: fixed; inset: 0; z-index: -2;
     background:
-      radial-gradient(1200px 700px at 78% -8%, #2a2270 0%, transparent 55%),
-      radial-gradient(1000px 800px at 12% 108%, #123a52 0%, transparent 55%),
-      linear-gradient(180deg, var(--bg-1), var(--bg-0) 70%);
+      radial-gradient(1200px 720px at 78% -6%, #6a5bd6 0%, transparent 56%),
+      radial-gradient(1000px 820px at 10% 108%, #2f86b4 0%, transparent 54%),
+      radial-gradient(900px 640px at 92% 102%, #c465ac 0%, transparent 48%),
+      linear-gradient(180deg, #454aa0, #2f3470 78%);
   }
   .stars {
     position: fixed; inset: 0; z-index: -1; pointer-events: none;
@@ -130,7 +131,7 @@
   .ctrl { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--text-soft); font-weight: 700; }
   .ctrl select { border: 1px solid var(--stroke); background: var(--panel-2); color: var(--text); border-radius: 999px; padding: 8px 14px; font-family: inherit; font-size: 13px; font-weight: 700; cursor: pointer; backdrop-filter: blur(8px); }
   .ctrl select:focus { outline: none; border-color: var(--violet); box-shadow: 0 0 0 3px rgba(154,123,255,.2); }
-  .ctrl select option { background: #1b1c44; }
+  .ctrl select option { background: #353a80; }
 
   /* グループ見出し */
   .group-head { grid-column: 1 / -1; font-family: "Zen Kaku Gothic New", sans-serif; font-weight: 900; font-size: 15px; color: var(--text); margin: 16px 0 2px; display: flex; align-items: center; gap: 10px; }
@@ -184,7 +185,7 @@
   .modal-bg { display: none; position: fixed; inset: 0; background: rgba(6,7,20,.72); backdrop-filter: blur(4px); z-index: 50; align-items: center; justify-content: center; padding: 16px; }
   .modal-bg.open { display: flex; }
   .modal {
-    background: linear-gradient(180deg, #1b1c44, #141534);
+    background: linear-gradient(180deg, #353a80, #2b3068);
     border: 1px solid var(--stroke); border-radius: 22px; padding: 24px; width: 100%; max-width: 450px;
     box-shadow: 0 30px 80px rgba(0,0,0,.6);
   }
@@ -197,7 +198,7 @@
   }
   .field input::placeholder, .field textarea::placeholder { color: #6f74a3; }
   .field input:focus, .field textarea:focus, .field select:focus { outline: none; border-color: var(--violet); box-shadow: 0 0 0 3px rgba(154,123,255,.25); }
-  .field select option { background: #1b1c44; }
+  .field select option { background: #353a80; }
   .field textarea { resize: vertical; min-height: 58px; }
   .seg { display: flex; gap: 7px; flex-wrap: wrap; }
   .seg button { border: 1px solid var(--stroke); background: rgba(255,255,255,.04); border-radius: 999px; padding: 8px 14px; font-family: inherit; font-size: 13px; cursor: pointer; color: var(--text-soft); font-weight: 700; transition: .15s; }
@@ -207,7 +208,7 @@
   /* ログイン画面 */
   #authScreen { display: none; position: fixed; inset: 0; z-index: 45; align-items: center; justify-content: center; padding: 16px; }
   #authScreen.open { display: flex; }
-  .auth-card { background: linear-gradient(180deg, #1b1c44, #141534); border: 1px solid var(--stroke); border-radius: 24px; padding: 30px 26px; width: 100%; max-width: 392px; box-shadow: 0 30px 80px rgba(0,0,0,.6); text-align: center; }
+  .auth-card { background: linear-gradient(180deg, #353a80, #2b3068); border: 1px solid var(--stroke); border-radius: 24px; padding: 30px 26px; width: 100%; max-width: 392px; box-shadow: 0 30px 80px rgba(0,0,0,.6); text-align: center; }
   .auth-card h2 { font-family: "Zen Kaku Gothic New", sans-serif; font-weight: 900; margin: 4px 0 0; font-size: 32px; }
   .auth-card .num { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
   .auth-tabs { display: flex; gap: 8px; justify-content: center; margin: 20px 0 16px; }
