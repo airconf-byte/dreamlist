@@ -125,6 +125,19 @@
   .tab .cnt { background: rgba(255,255,255,.1); border-radius: 999px; padding: 1px 8px; font-size: 11px; }
   .tab.active { color: #fff; border-color: transparent; box-shadow: 0 6px 18px rgba(0,0,0,.35); }
 
+  /* 並べ替え・絞り込みコントロール */
+  .controls { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; margin: 0 0 22px; }
+  .ctrl { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--text-soft); font-weight: 700; }
+  .ctrl select { border: 1px solid var(--stroke); background: var(--panel-2); color: var(--text); border-radius: 999px; padding: 8px 14px; font-family: inherit; font-size: 13px; font-weight: 700; cursor: pointer; backdrop-filter: blur(8px); }
+  .ctrl select:focus { outline: none; border-color: var(--violet); box-shadow: 0 0 0 3px rgba(154,123,255,.2); }
+  .ctrl select option { background: #1b1c44; }
+
+  /* グループ見出し */
+  .group-head { grid-column: 1 / -1; font-family: "Zen Kaku Gothic New", sans-serif; font-weight: 900; font-size: 15px; color: var(--text); margin: 16px 0 2px; display: flex; align-items: center; gap: 10px; }
+  .group-head:first-child { margin-top: 0; }
+  .group-head .gcount { font-size: 11px; color: var(--text-soft); background: rgba(255,255,255,.08); border-radius: 999px; padding: 2px 9px; font-weight: 700; }
+  .group-head .gline { flex: 1; height: 1px; background: var(--stroke); }
+
   /* カード（コンパクト密集レイアウト） */
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
   .card {
@@ -278,12 +291,39 @@
       <button class="btn" onclick="shareList()">🔗 共有リンクをコピー</button>
       <button class="btn" onclick="openImport()">📊 表から取込</button>
       <button class="btn" onclick="exportJson()">⬇ バックアップ</button>
-      <label class="btn" style="cursor:pointer">⬆ JSON復元<input type="file" accept=".json" style="display:none" onchange="importJson(event)"></label>
       <span class="acct" id="acct"></span>
       <button class="btn" id="logoutBtn" style="display:none" onclick="logout()">ログアウト</button>
     </div>
 
     <div class="tabs" id="tabs"></div>
+
+    <div class="controls" id="controls">
+      <label class="ctrl"><span>並べ替え</span>
+        <select id="sortSel" onchange="setSort(this.value)">
+          <option value="added">追加順</option>
+          <option value="done">達成を下に</option>
+          <option value="category">ジャンル順</option>
+          <option value="deadline">期限が近い順</option>
+        </select>
+      </label>
+      <label class="ctrl"><span>期限で絞る</span>
+        <select id="deadFilterSel" onchange="setDeadlineFilter(this.value)">
+          <option value="all">すべて</option>
+          <option value="1年以内">1年以内</option>
+          <option value="3年以内">3年以内</option>
+          <option value="10年以内">10年以内</option>
+          <option value="いつか">いつか</option>
+        </select>
+      </label>
+      <label class="ctrl"><span>分けて表示</span>
+        <select id="groupSel" onchange="setGroup(this.value)">
+          <option value="none">しない</option>
+          <option value="deadline">期限ごと</option>
+          <option value="category">ジャンルごと</option>
+        </select>
+      </label>
+    </div>
+
     <div class="grid" id="grid"></div>
     <div class="empty-note" id="emptyNote" style="display:none">このカテゴリはまだ空っぽ。「＋」から夢を書いてみよう 🌱</div>
 
@@ -367,10 +407,14 @@ const CATEGORIES = [
   { key: "self",   label: "なりたい自分", emoji: "🌟", color: "#c9a3ff" },
 ];
 const DEADLINES = ["1年以内", "3年以内", "10年以内", "いつか"];
+const DEAD_RANK = { "1年以内":0, "3年以内":1, "10年以内":2, "いつか":3 };
 const STORE_KEY = "yumeList100_v1";
 
 let dreams = [];
 let activeTab = "all";
+let sortMode = "added";        // "added" | "done" | "category" | "deadline"
+let deadlineFilter = "all";    // "all" | 各期限
+let groupMode = "none";        // "none" | "deadline" | "category"
 let editingId = null;
 let modalDeadline = "いつか";
 let readOnly = false;
@@ -437,14 +481,48 @@ function renderMeter(){
   else if(done<100) msg.textContent = "ゴールはもうすぐ 🌠";
   else msg.textContent = "夢の星座、完成！🎊";
 }
+function setSort(v){ sortMode = v; render(); }
+function setDeadlineFilter(v){ deadlineFilter = v; render(); }
+function setGroup(v){ groupMode = v; render(); }
+function catIndex(key){ const i = CATEGORIES.findIndex(c=>c.key===key); return i<0 ? 99 : i; }
+function sortDreams(list){
+  const byAdded = (a,b) => (a.sort||0) - (b.sort||0);
+  const arr = list.slice();
+  if(sortMode==="done")          arr.sort((a,b)=> (a.done?1:0)-(b.done?1:0) || byAdded(a,b));
+  else if(sortMode==="category") arr.sort((a,b)=> catIndex(a.category)-catIndex(b.category) || byAdded(a,b));
+  else if(sortMode==="deadline") arr.sort((a,b)=> ((DEAD_RANK[a.deadline]??9)-(DEAD_RANK[b.deadline]??9)) || byAdded(a,b));
+  else                           arr.sort(byAdded);
+  return arr;
+}
+function renderGrouped(grid, list){
+  let groups;
+  if(groupMode==="deadline"){
+    groups = DEADLINES.map(d => ({ label:"⏳ "+d, items:list.filter(x=>(x.deadline||"いつか")===d) }));
+  } else {
+    groups = CATEGORIES.map(c => ({ label:c.emoji+" "+c.label, items:list.filter(x=>x.category===c.key) }));
+  }
+  groups.forEach(g => {
+    if(!g.items.length) return;
+    const h = document.createElement("div");
+    h.className = "group-head";
+    h.innerHTML = `<span>${escapeHtml(g.label)}</span><span class="gcount">${g.items.length}</span><span class="gline"></span>`;
+    grid.appendChild(h);
+    g.items.forEach(d => grid.appendChild(cardEl(d)));
+  });
+}
 function render(){
   renderTabs();
   renderMeter();
   const grid = document.getElementById("grid");
   grid.innerHTML = "";
-  const list = activeTab==="all" ? dreams : dreams.filter(d => d.category===activeTab);
-  list.forEach(d => grid.appendChild(cardEl(d)));
-  document.getElementById("emptyNote").style.display = (list.length===0 && readOnly) ? "block" : "none";
+  let list = dreams.slice();
+  if(activeTab!=="all") list = list.filter(d => d.category===activeTab);
+  if(deadlineFilter!=="all") list = list.filter(d => (d.deadline||"いつか")===deadlineFilter);
+  list = sortDreams(list);
+  if(groupMode==="none") list.forEach(d => grid.appendChild(cardEl(d)));
+  else renderGrouped(grid, list);
+  const filtered = activeTab!=="all" || deadlineFilter!=="all";
+  document.getElementById("emptyNote").style.display = (list.length===0 && (readOnly || filtered)) ? "block" : "none";
   if(!readOnly){
     const add = document.createElement("button");
     add.className = "add-card";
@@ -613,22 +691,6 @@ function exportJson(){
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob); a.download = "yume-list-100.json"; a.click();
 }
-async function importJson(ev){
-  const file = ev.target.files[0]; if(!file) return;
-  const r = new FileReader();
-  r.onload = async () => {
-    try { const data = JSON.parse(r.result);
-      if(!Array.isArray(data)) return;
-      if(mode==="cloud"){
-        const rows = data.map((d,i)=>({ text:d.text, category:d.category||"work", deadline:d.deadline||"いつか", why:d.why||"", done:!!d.done, done_date:d.doneDate||null, sort:i }));
-        await sb.from("dreams").insert(rows); await dbLoad();
-      } else { dreams = data; save(); }
-      render(); alert("読み込みました 📖");
-    } catch(e){ alert("ファイルを読み込めませんでした"); }
-  };
-  r.readAsText(file); ev.target.value = "";
-}
-
 /* ---------- スプレッドシート取込（Excel/CSV） ---------- */
 let impRows = [];
 let impItems = [];
