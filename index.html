@@ -204,6 +204,9 @@
   .auth-msg { min-height: 18px; font-size: 12px; margin-top: 12px; line-height: 1.5; }
   .auth-msg.err { color: var(--pink); }
   .auth-msg.ok { color: var(--cyan); }
+  .auth-links { margin-top: 14px; display: flex; flex-direction: column; gap: 6px; font-size: 12px; }
+  .auth-links a { color: var(--cyan); cursor: pointer; text-decoration: none; }
+  .auth-links a:hover { text-decoration: underline; }
 
   .empty-note { text-align: center; color: var(--text-soft); padding: 40px; font-size: 14px; }
   footer { text-align: center; color: var(--text-soft); font-size: 12px; margin-top: 46px; opacity: .7; }
@@ -231,14 +234,18 @@
       <div class="kicker">★ Dream Constellation ★</div>
       <h2>夢リスト<span class="num">100</span></h2>
       <p class="epigraph" style="margin:10px 0 0">“ 思考は現実化する ”</p>
-      <p class="subtitle" style="margin:8px 0 0">ログインすると、自分の夢リストが表示されます</p>
-      <div class="auth-tabs">
+      <p class="subtitle" id="authSub" style="margin:8px 0 0">ログインすると、自分の夢リストが表示されます</p>
+      <div class="auth-tabs" id="authTabs">
         <button class="btn" id="tabLogin" onclick="setAuthMode('login')">ログイン</button>
         <button class="btn" id="tabSignup" onclick="setAuthMode('signup')">新規登録</button>
       </div>
-      <div class="field"><input type="text" id="authEmail" placeholder="メールアドレス" autocomplete="email" /></div>
-      <div class="field"><input type="password" id="authPass" placeholder="パスワード（6文字以上）" autocomplete="current-password" /></div>
+      <div class="field" id="fieldEmail"><input type="text" id="authEmail" placeholder="メールアドレス" autocomplete="email" /></div>
+      <div class="field" id="fieldPass"><input type="password" id="authPass" placeholder="パスワード（6文字以上）" autocomplete="current-password" /></div>
       <button class="btn primary" style="width:100%" id="authSubmit" onclick="submitAuth()">ログイン</button>
+      <div class="auth-links">
+        <a id="forgotLink" onclick="setAuthMode('reset')">パスワードをお忘れの方はこちら</a>
+        <a id="backLink" onclick="setAuthMode('login')" style="display:none">← ログインに戻る</a>
+      </div>
       <div class="auth-msg" id="authMsg"></div>
     </div>
   </div>
@@ -313,6 +320,7 @@ const SUPABASE_URL = "https://bsfagflbmrbqheedlsyw.supabase.co";       // 例: h
 const SUPABASE_ANON_KEY = "sb_publishable_iFJlKt0IjmWFNqTnKJ_GYg_lU14Zvf5";  // publishable key（ブラウザ公開OK）
 
 const CLOUD = /^https?:\/\//.test(SUPABASE_URL) && SUPABASE_ANON_KEY.length > 20;
+const INITIAL_HASH = window.location.hash;   // recovery/共有 検出用に、createClientがURLを消す前に確保
 let sb = null;
 if (CLOUD) { try { sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY); } catch(e){ console.error("Supabase初期化に失敗", e); } }
 
@@ -338,7 +346,8 @@ let modalDeadline = "いつか";
 let readOnly = false;
 let mode = "local";          // "local" | "cloud" | "shared"
 let session = null;
-let authMode = "login";
+let authMode = "login";      // "login" | "signup" | "reset" | "newpass"
+let recovering = false;      // パスワード再設定リンクから来た状態
 
 function catOf(key){ return CATEGORIES.find(c => c.key === key) || CATEGORIES[0]; }
 function uid(){ return "d" + Math.random().toString(36).slice(2,9); }
@@ -595,13 +604,41 @@ function showAuth(){ document.getElementById("authScreen").classList.add("open")
 function hideAuth(){ document.getElementById("authScreen").classList.remove("open"); document.querySelector(".wrap").style.display = "block"; }
 function setAuthMode(m){
   authMode = m;
+  const tabs = document.getElementById("authTabs");
+  const fEmail = document.getElementById("fieldEmail");
+  const fPass = document.getElementById("fieldPass");
+  const submit = document.getElementById("authSubmit");
+  const forgot = document.getElementById("forgotLink");
+  const back = document.getElementById("backLink");
+  const sub = document.getElementById("authSub");
+  const pass = document.getElementById("authPass");
+  authMsg("");
+  tabs.style.display = "flex"; fEmail.style.display = "block"; fPass.style.display = "block";
+  forgot.style.display = "none"; back.style.display = "none";
+  pass.placeholder = "パスワード（6文字以上）";
   document.getElementById("tabLogin").classList.toggle("on", m==="login");
   document.getElementById("tabSignup").classList.toggle("on", m==="signup");
-  document.getElementById("authSubmit").textContent = m==="login" ? "ログイン" : "新規登録する";
-  authMsg("");
+  if(m==="login"){
+    submit.textContent = "ログイン"; forgot.style.display = "inline";
+    sub.textContent = "ログインすると、自分の夢リストが表示されます";
+  } else if(m==="signup"){
+    submit.textContent = "新規登録する";
+    sub.textContent = "メールとパスワードだけで、すぐ始められます";
+  } else if(m==="reset"){
+    tabs.style.display = "none"; fPass.style.display = "none"; back.style.display = "inline";
+    submit.textContent = "再設定メールを送信";
+    sub.textContent = "登録したメール宛に、パスワード再設定リンクを送ります";
+  } else if(m==="newpass"){
+    tabs.style.display = "none"; fEmail.style.display = "none";
+    submit.textContent = "新しいパスワードに更新";
+    sub.textContent = "新しいパスワードを入力してください";
+    pass.placeholder = "新しいパスワード（6文字以上）"; pass.value = "";
+  }
 }
 function authMsg(text, kind){ const el = document.getElementById("authMsg"); el.textContent = text||""; el.className = "auth-msg" + (kind?(" "+kind):""); }
 async function submitAuth(){
+  if(authMode==="reset"){ return sendReset(); }
+  if(authMode==="newpass"){ return setNewPassword(); }
   const email = document.getElementById("authEmail").value.trim();
   const pass = document.getElementById("authPass").value;
   if(!email || !pass){ authMsg("メールとパスワードを入力してね", "err"); return; }
@@ -612,6 +649,26 @@ async function submitAuth(){
   if(res.error){ authMsg(translateAuthError(res.error.message), "err"); return; }
   if(authMode==="signup" && !res.data.session){ authMsg("確認メールを送りました📩 メール内のリンクを開いてから、ログインしてね", "ok"); return; }
   // 成功時は onAuthStateChange(SIGNED_IN) が続きを処理
+}
+async function sendReset(){
+  const email = document.getElementById("authEmail").value.trim();
+  if(!email){ authMsg("メールアドレスを入力してね", "err"); return; }
+  authMsg("送信中…");
+  const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname });
+  if(error){ authMsg(translateAuthError(error.message), "err"); return; }
+  authMsg("再設定メールを送りました📩 メール内のリンクを開くと、新しいパスワードを設定できます", "ok");
+}
+async function setNewPassword(){
+  const pass = document.getElementById("authPass").value;
+  if(!pass || pass.length < 6){ authMsg("パスワードは6文字以上にしてね", "err"); return; }
+  authMsg("更新中…");
+  const { error } = await sb.auth.updateUser({ password: pass });
+  if(error){ authMsg(translateAuthError(error.message), "err"); return; }
+  recovering = false;
+  history.replaceState(null, "", location.origin + location.pathname);
+  const { data } = await sb.auth.getSession(); session = data.session;
+  if(session){ mode="cloud"; hideAuth(); await dbLoad(); render(); refreshAcct(); }
+  alert("パスワードを更新しました！そのままログインしています ✨");
 }
 function translateAuthError(msg){
   if(/Invalid login/i.test(msg)) return "メールかパスワードが違います";
@@ -667,11 +724,14 @@ async function init(){
 
   if(CLOUD && sb){
     document.getElementById("footNote").textContent = "クラウド保存中 · どの端末からでも同じリストが見られます";
+    const isRecovery = /type=recovery/.test(INITIAL_HASH) || /type=recovery/.test(location.hash);
     sb.auth.onAuthStateChange(async (event, s) => {
       session = s;
-      if(event==="SIGNED_IN"){ mode="cloud"; hideAuth(); await dbLoad(); render(); refreshAcct(); }
+      if(event==="PASSWORD_RECOVERY"){ recovering = true; showAuth(); setAuthMode("newpass"); return; }
+      if(event==="SIGNED_IN"){ if(recovering) return; mode="cloud"; hideAuth(); await dbLoad(); render(); refreshAcct(); }
       else if(event==="SIGNED_OUT"){ mode="local"; session=null; dreams=[]; render(); refreshAcct(); showAuth(); }
     });
+    if(isRecovery){ recovering = true; showAuth(); setAuthMode("newpass"); return; }
     const { data } = await sb.auth.getSession();
     session = data.session;
     if(session){ mode="cloud"; hideAuth(); await dbLoad(); render(); refreshAcct(); }
