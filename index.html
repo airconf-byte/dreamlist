@@ -687,19 +687,22 @@ function periodToDeadline(line){
 function parseMarkdownDreams(text){
   const lines = String(text).split(/\r?\n/);
   let cur = "いつか";
+  let skip = false;   // 「なりたくない」系セクションの間はtrue
   const items = [];
   for(const raw of lines){
     const line = raw.trim();
     if(!line) continue;
-    if(/^#{1,6}\s/.test(line)) continue; // 見出し(# 夢リスト)は無視
     const m = line.match(/^(?:[-*+]|\d+[.)])\s+(.*)$/);
     if(m){
+      if(skip) continue;   // なりたくない系の箇条書きは除外
       let t = m[1].replace(/\*\*(.*?)\*\*/g, "$1").replace(/`([^`]*)`/g, "$1").replace(/^\[[ xX]\]\s*/, "").trim();
       if(!t) continue;
       items.push({ text: t.slice(0,120), category: guessCategory(t), deadline: cur, why: "" });
     } else {
-      const dl = periodToDeadline(line);
-      if(dl) cur = dl;   // 期限見出し。それ以外の非リスト行は無視
+      const plain = line.replace(/^#{1,6}\s+/, "").trim();   // 見出し記号を外して判定
+      if(/なりたくない|なりたく無い|したくない|やりたくない|避けたい/.test(plain)){ skip = true; continue; }
+      const dl = periodToDeadline(plain);
+      if(dl){ cur = dl; skip = false; }   // 期限見出しでスキップ解除。その他の非リスト行は無視
     }
   }
   return items;
