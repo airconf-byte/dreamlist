@@ -14,7 +14,7 @@
 <meta name="apple-mobile-web-app-title" content="夢リスト" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@600;800&family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet" />
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
@@ -88,18 +88,17 @@
   header.hero { text-align: center; padding: 14px 0 6px; }
   .kicker { letter-spacing: .5em; font-size: 10px; color: var(--text-soft); font-weight: 700; text-transform: uppercase; margin-bottom: 15px; opacity: .75; }
   h1 {
-    font-family: "Shippori Mincho B1", serif; font-weight: 800;
-    margin: 0; font-size: 54px; letter-spacing: .05em; line-height: 1.06;
+    font-family: "Zen Kaku Gothic New", sans-serif; font-weight: 900;
+    margin: 0; font-size: 50px; letter-spacing: 0; line-height: 1.05;
   }
   h1 .num {
-    font-family: "Shippori Mincho B1", serif;
     background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent;
-    filter: drop-shadow(0 2px 18px rgba(143,139,255,.45));
+    filter: drop-shadow(0 2px 18px rgba(143,139,255,.45)); padding: 0 .04em;
   }
-  .subtitle { color: var(--text-soft); margin: 18px 0 0; font-size: 13px; letter-spacing: .05em; }
-  .epigraph { font-family: "Shippori Mincho B1", serif; font-style: italic; margin: 18px 0 0; font-size: 18px; font-weight: 600; letter-spacing: .12em;
+  .subtitle { color: var(--text-soft); margin: 16px 0 0; font-size: 13px; letter-spacing: .05em; }
+  .epigraph { font-family: "Zen Kaku Gothic New", sans-serif; font-weight: 700; margin: 14px 0 0; font-size: 12.5px; letter-spacing: .3em; padding-left: .3em;
     background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent;
-    filter: drop-shadow(0 1px 12px rgba(143,139,255,.3)); }
+    filter: drop-shadow(0 1px 10px rgba(143,139,255,.3)); }
 
   .meter {
     margin: 28px auto 0; max-width: 640px;
@@ -222,7 +221,7 @@
     border: 1px solid var(--stroke); border-radius: 22px; padding: 24px; width: 100%; max-width: 450px;
     box-shadow: 0 30px 80px rgba(0,0,0,.6);
   }
-  .modal h3 { font-family: "Shippori Mincho B1", serif; font-weight: 800; margin: 0 0 18px; font-size: 23px; letter-spacing: .04em; }
+  .modal h3 { font-family: "Zen Kaku Gothic New", sans-serif; font-weight: 900; margin: 0 0 18px; font-size: 22px; letter-spacing: .01em; }
   .field { margin-bottom: 16px; }
   .field label { display: block; font-size: 13px; font-weight: 700; margin-bottom: 7px; color: var(--text-soft); }
   .field input[type=text], .field input[type=password], .field textarea, .field select {
@@ -242,7 +241,7 @@
   #authScreen { display: none; position: fixed; inset: 0; z-index: 45; align-items: center; justify-content: center; padding: 16px; }
   #authScreen.open { display: flex; }
   .auth-card { background: linear-gradient(180deg, #353a80, #2b3068); border: 1px solid var(--stroke); border-radius: 24px; padding: 30px 26px; width: 100%; max-width: 392px; box-shadow: 0 30px 80px rgba(0,0,0,.6); text-align: center; }
-  .auth-card h2 { font-family: "Shippori Mincho B1", serif; font-weight: 800; margin: 4px 0 0; font-size: 34px; letter-spacing: .05em; }
+  .auth-card h2 { font-family: "Zen Kaku Gothic New", sans-serif; font-weight: 900; margin: 4px 0 0; font-size: 32px; letter-spacing: .01em; }
   .auth-card .num { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
   .auth-tabs { display: flex; gap: 8px; justify-content: center; margin: 20px 0 16px; }
   .auth-tabs .btn { flex: 1; }
