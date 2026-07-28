@@ -115,6 +115,19 @@
   .btn.primary:hover { box-shadow: 0 12px 36px rgba(154,123,255,.55); }
   .acct { font-size: 12px; color: var(--text-soft); }
 
+  /* メニュー（ドロップダウン） */
+  .menu-wrap { position: relative; display: inline-block; }
+  .menu { position: absolute; right: 0; top: calc(100% + 8px); z-index: 32; min-width: 232px;
+    background: linear-gradient(180deg, #353a80, #2b3068); border: 1px solid var(--stroke); border-radius: 14px;
+    box-shadow: 0 22px 54px rgba(0,0,0,.5); padding: 6px; display: none; }
+  .menu.open { display: block; }
+  .menu button { display: block; width: 100%; text-align: left; background: none; border: none; color: var(--text);
+    font-family: "Zen Kaku Gothic New", sans-serif; font-size: 13px; font-weight: 700; padding: 10px 12px; border-radius: 9px; cursor: pointer; }
+  .menu button:hover { background: rgba(255,255,255,.1); }
+  .menu-sep { height: 1px; background: var(--stroke); margin: 6px 6px; }
+  .menu-acct { font-size: 11px; color: var(--text-soft); padding: 6px 12px; word-break: break-all; }
+  .menu-acct:empty { display: none; }
+
   .tabs { display: flex; gap: 9px; flex-wrap: wrap; justify-content: center; margin: 22px 0 24px; }
   .tab {
     border: 1px solid var(--stroke); background: var(--panel); color: var(--text-soft);
@@ -317,27 +330,25 @@
 
     <div class="toolbar" id="toolbar">
       <button class="btn primary" onclick="openAdd()">＋ 夢を追加</button>
-      <button class="btn" onclick="shareList()">🔗 共有リンクをコピー</button>
-      <button class="btn" onclick="openImport()">📊 表から取込</button>
-      <button class="btn" onclick="exportJson()">⬇ バックアップ</button>
-      <button class="btn" id="muteBtn" onclick="toggleMute()" title="効果音のオン/オフ">🔊</button>
       <button class="btn" onclick="openRanking()">🏆 ランキング</button>
-      <button class="btn" onclick="openSettings()">⚙️ 設定</button>
-      <span class="acct" id="acct"></span>
-      <button class="btn" id="logoutBtn" style="display:none" onclick="logout()">ログアウト</button>
+      <div class="menu-wrap">
+        <button class="btn" id="menuBtn" onclick="toggleMenu(event)">⋯ メニュー</button>
+        <div class="menu" id="menu">
+          <button onclick="shareList(); closeMenu()">🔗 共有リンクをコピー</button>
+          <button onclick="openSettings(); closeMenu()">⚙️ 設定（表示名・公開）</button>
+          <button onclick="openImport(); closeMenu()">📊 表から取込（Excel/CSV/md）</button>
+          <button onclick="exportJson(); closeMenu()">⬇ バックアップ</button>
+          <button id="menuMute" onclick="toggleMute()">🔊 効果音: オン</button>
+          <div class="menu-sep"></div>
+          <div class="menu-acct" id="acct"></div>
+          <button onclick="logout(); closeMenu()">🚪 ログアウト</button>
+        </div>
+      </div>
     </div>
 
-    <div class="tabs" id="tabs"></div>
-
     <div class="controls" id="controls">
-      <label class="ctrl"><span>🎨 テーマ</span>
-        <select id="themeSel" onchange="applyTheme(this.value)">
-          <option value="twilight">宵の空</option>
-          <option value="aurora">オーロラ</option>
-          <option value="sunset">夕焼け</option>
-          <option value="sakura">夜桜</option>
-          <option value="ocean">深海</option>
-        </select>
+      <label class="ctrl"><span>ジャンル</span>
+        <select id="genreSel" onchange="setGenre(this.value)"></select>
       </label>
       <label class="ctrl"><span>並べ替え</span>
         <select id="sortSel" onchange="setSort(this.value)">
@@ -361,6 +372,15 @@
           <option value="none">しない</option>
           <option value="deadline">期限ごと</option>
           <option value="category">ジャンルごと</option>
+        </select>
+      </label>
+      <label class="ctrl"><span>🎨 テーマ</span>
+        <select id="themeSel" onchange="applyTheme(this.value)">
+          <option value="twilight">宵の空</option>
+          <option value="aurora">オーロラ</option>
+          <option value="sunset">夕焼け</option>
+          <option value="sakura">夜桜</option>
+          <option value="ocean">深海</option>
         </select>
       </label>
     </div>
@@ -528,25 +548,16 @@ function b64encode(str){ return btoa(unescape(encodeURIComponent(str))); }
 function b64decode(str){ return decodeURIComponent(escape(atob(str))); }
 
 /* ---------- 描画 ---------- */
-function renderTabs(){
-  const tabs = document.getElementById("tabs");
-  tabs.innerHTML = "";
-  const all = document.createElement("button");
-  all.className = "tab" + (activeTab==="all"?" active":"");
-  if(activeTab==="all"){ all.style.background = "linear-gradient(120deg,#4fe3d0,#9a7bff,#ff77c8)"; all.style.color = "#10122c"; }
-  all.innerHTML = `📚 すべて <span class="cnt">${dreams.length}</span>`;
-  all.onclick = () => { activeTab="all"; render(); };
-  tabs.appendChild(all);
-  CATEGORIES.forEach(c => {
-    const n = dreams.filter(d => d.category===c.key).length;
-    const b = document.createElement("button");
-    b.className = "tab" + (activeTab===c.key?" active":"");
-    if(activeTab===c.key){ b.style.background = c.color; b.style.color = "#10122c"; }
-    b.innerHTML = `${c.emoji} ${c.label} <span class="cnt">${n}</span>`;
-    b.onclick = () => { activeTab=c.key; render(); };
-    tabs.appendChild(b);
-  });
+function renderGenre(){
+  const sel = document.getElementById("genreSel"); if(!sel) return;
+  const opts = [`<option value="all">📚 すべて (${dreams.length})</option>`];
+  CATEGORIES.forEach(c => { const n = dreams.filter(d=>d.category===c.key).length; opts.push(`<option value="${c.key}">${c.emoji} ${c.label} (${n})</option>`); });
+  sel.innerHTML = opts.join("");
+  sel.value = activeTab;
 }
+function setGenre(v){ activeTab = v; render(); }
+function toggleMenu(ev){ if(ev) ev.stopPropagation(); document.getElementById("menu").classList.toggle("open"); }
+function closeMenu(){ const m=document.getElementById("menu"); if(m) m.classList.remove("open"); }
 function renderMeter(){
   const done = dreams.filter(d => d.done).length;
   document.getElementById("doneCount").textContent = done;
@@ -590,7 +601,7 @@ function renderGrouped(grid, list){
   });
 }
 function render(){
-  renderTabs();
+  renderGenre();
   renderMeter();
   const grid = document.getElementById("grid");
   grid.innerHTML = "";
@@ -702,7 +713,7 @@ async function saveDream(){
     dreams.push(d);
     closeModal(); render();
     shootingStar(); playAdd(); showToast("⭐ 夢を書きとめたよ", 2000);
-    logActivity("add", d.text);
+    logActivity("add");
     if(mode!=="cloud") save();
   }
 }
@@ -711,7 +722,7 @@ async function toggleDone(id){
   d.done = !d.done;
   d.doneDate = d.done ? new Date().toLocaleDateString("ja-JP") : null;
   render();
-  if(d.done){ burstConfetti(); playAchieve(); showToast(CONGRATS[Math.floor(Math.random()*CONGRATS.length)]); logActivity("done", d.text); }
+  if(d.done){ burstConfetti(); playAchieve(); showToast(CONGRATS[Math.floor(Math.random()*CONGRATS.length)]); logActivity("done"); }
   if(mode==="cloud") await dbUpdate(d); else save();
 }
 
@@ -1011,9 +1022,9 @@ async function saveSettings(){
   else myProfile = { display_name: name, is_public: isPublic };
   closeSettings(); showToast("⚙️ 設定を保存したよ", 1800);
 }
-async function logActivity(kind, text){
+async function logActivity(kind){
   if(mode!=="cloud" || !myProfile || !myProfile.is_public) return;
-  try { await sb.from("activity").insert({ kind, dream_text: (text||"").slice(0,120) }); } catch(e){ console.warn("ログ記録失敗", e); }
+  try { await sb.from("activity").insert({ kind }); } catch(e){ console.warn("ログ記録失敗", e); }
 }
 function switchRankTab(t){
   document.getElementById("rankTabBoard").classList.toggle("on", t==="board");
@@ -1051,8 +1062,8 @@ async function openRanking(){
   else if(!fd.data || !fd.data.length){ feed.innerHTML = '<div class="rank-empty">まだ活動がありません</div>'; }
   else {
     feed.innerHTML = fd.data.map(a=>{
-      const verb = a.kind==="done" ? "を達成しました 🎉" : "を追加しました ✍️";
-      return `<div class="feed-row"><span class="who">${escapeHtml(a.display_name)}</span> さんが「${escapeHtml((a.dream_text||"").slice(0,40))}」${verb}<span class="when">${timeAgo(a.created_at)}</span></div>`;
+      const verb = a.kind==="done" ? "夢をひとつ達成しました 🎉" : "夢をひとつ追加しました ✍️";
+      return `<div class="feed-row"><span class="who">${escapeHtml(a.display_name)}</span> さんが ${verb}<span class="when">${timeAgo(a.created_at)}</span></div>`;
     }).join("");
   }
 }
@@ -1140,9 +1151,7 @@ function translateAuthError(msg){
 async function logout(){ await sb.auth.signOut(); }
 function refreshAcct(){
   const acct = document.getElementById("acct");
-  const lb = document.getElementById("logoutBtn");
-  if(mode==="cloud" && session){ acct.textContent = "👤 " + (session.user.email||""); lb.style.display = "inline-block"; }
-  else { acct.textContent = ""; lb.style.display = "none"; }
+  if(acct) acct.textContent = (mode==="cloud" && session) ? ("👤 " + (session.user.email||"")) : "";
 }
 
 /* ---------- テーマ切替 ---------- */
@@ -1182,7 +1191,7 @@ function beep(freq, start, dur, type, gain){
 }
 function playAchieve(){ if(muted) return; [523.25,659.25,783.99,1046.5].forEach((f,i)=>beep(f, i*0.09, 0.4, "triangle", 0.25)); beep(1568, 0.42, 0.5, "sine", 0.12); }
 function playAdd(){ if(muted) return; beep(880,0,0.12,"sine",0.16); beep(1320,0.07,0.18,"sine",0.12); }
-function updateMuteBtn(){ const b=document.getElementById("muteBtn"); if(b) b.textContent = muted ? "🔇" : "🔊"; }
+function updateMuteBtn(){ const b=document.getElementById("menuMute"); if(b) b.textContent = muted ? "🔇 効果音: オフ" : "🔊 効果音: オン"; }
 function toggleMute(){ muted = !muted; localStorage.setItem("yumeMuted", muted?"1":"0"); updateMuteBtn(); if(!muted) beep(880,0,0.1,"sine",0.12); }
 
 /* ---------- トースト ---------- */
@@ -1247,6 +1256,7 @@ async function init(){
   document.getElementById("importBg").addEventListener("click", e => { if(e.target.id==="importBg") closeImport(); });
   document.getElementById("settingsBg").addEventListener("click", e => { if(e.target.id==="settingsBg") closeSettings(); });
   document.getElementById("rankBg").addEventListener("click", e => { if(e.target.id==="rankBg") closeRanking(); });
+  document.addEventListener("click", e => { if(!e.target.closest(".menu-wrap")) closeMenu(); });
   document.getElementById("mText").addEventListener("keydown", e => { if(e.key==="Enter"){ e.preventDefault(); saveDream(); } });
   document.getElementById("authPass").addEventListener("keydown", e => { if(e.key==="Enter") submitAuth(); });
 

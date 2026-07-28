@@ -40,10 +40,12 @@ $$;
 grant execute on function public.get_leaderboard() to anon, authenticated;
 
 -- 4) 活動フィード（公開ユーザーのみ・新着順）----------------
+--    ※ 夢の内容(dream_text)は返しません。表示名と「追加/達成した事実」だけ。
+drop function if exists public.get_activity_feed();
 create or replace function public.get_activity_feed()
-returns table (display_name text, kind text, dream_text text, created_at timestamptz)
+returns table (display_name text, kind text, created_at timestamptz)
 language sql security definer set search_path = public as $$
-  select p.display_name, a.kind, a.dream_text, a.created_at
+  select p.display_name, a.kind, a.created_at
   from public.activity a
   join public.profiles p on p.id = a.user_id
   where p.is_public = true and coalesce(p.display_name, '') <> ''
