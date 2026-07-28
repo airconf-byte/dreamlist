@@ -1167,6 +1167,8 @@ function translateAuthError(msg){
   if(/already registered/i.test(msg)) return "このメールは登録済みです。ログインしてね";
   if(/at least 6/i.test(msg)) return "パスワードは6文字以上にしてね";
   if(/valid email/i.test(msg)) return "メールアドレスの形式を確認してね";
+  if(/rate limit|over_email_send|too many/i.test(msg)) return "アクセスが混み合っています。少し時間をおいてから試してね";
+  if(/for security purposes/i.test(msg)) return "少し時間をおいてから、もう一度試してね";
   return msg;
 }
 async function logout(){ await sb.auth.signOut(); }
