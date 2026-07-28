@@ -242,6 +242,21 @@
     opacity: 0; transition: transform .45s cubic-bezier(.2,1.3,.3,1), opacity .3s; pointer-events: none; white-space: nowrap; max-width: 92vw; }
   .toast.show { transform: translate(-50%, 0); opacity: 1; }
 
+  /* ランキング・フィード */
+  .rank-tabs { display: flex; gap: 8px; margin: 0 0 14px; }
+  .rank-tabs .btn { flex: 1; }
+  .rank-tabs .btn.on { background: var(--grad); color: #10122c; border: none; }
+  .rank-body { max-height: 52vh; overflow-y: auto; }
+  .rank-row { display: flex; align-items: center; gap: 12px; padding: 10px 6px; border-bottom: 1px solid rgba(255,255,255,.08); }
+  .rank-num { width: 30px; text-align: center; font-family: "Zen Kaku Gothic New", sans-serif; font-weight: 900; font-size: 17px; color: var(--gold); }
+  .rank-name { flex: 1; font-weight: 700; word-break: break-word; }
+  .rank-score { font-size: 12px; color: var(--text-soft); white-space: nowrap; }
+  .rank-score b { color: var(--gold); font-size: 16px; }
+  .feed-row { padding: 10px 6px; border-bottom: 1px solid rgba(255,255,255,.08); font-size: 13px; line-height: 1.6; }
+  .feed-row .who { font-weight: 700; color: var(--cyan); }
+  .feed-row .when { font-size: 11px; color: var(--text-soft); margin-left: 6px; }
+  .rank-empty { text-align: center; color: var(--text-soft); padding: 34px 16px; font-size: 13px; line-height: 1.7; }
+
   .empty-note { text-align: center; color: var(--text-soft); padding: 40px; font-size: 14px; }
   footer { text-align: center; color: var(--text-soft); font-size: 12px; margin-top: 46px; opacity: .7; }
   #confetti { position: fixed; inset: 0; pointer-events: none; z-index: 60; }
@@ -306,6 +321,8 @@
       <button class="btn" onclick="openImport()">📊 表から取込</button>
       <button class="btn" onclick="exportJson()">⬇ バックアップ</button>
       <button class="btn" id="muteBtn" onclick="toggleMute()" title="効果音のオン/オフ">🔊</button>
+      <button class="btn" onclick="openRanking()">🏆 ランキング</button>
+      <button class="btn" onclick="openSettings()">⚙️ 設定</button>
       <span class="acct" id="acct"></span>
       <button class="btn" id="logoutBtn" style="display:none" onclick="logout()">ログアウト</button>
     </div>
@@ -399,6 +416,40 @@
       <div class="modal-actions">
         <button class="btn" onclick="closeImport()">キャンセル</button>
         <button class="btn primary" id="impDoBtn" onclick="doImport()" style="display:none">この内容で取り込む</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 設定モーダル -->
+  <div class="modal-bg" id="settingsBg">
+    <div class="modal" style="max-width:440px">
+      <h3>⚙️ 設定</h3>
+      <div class="field">
+        <label>👤 表示名（共有・ランキングで表示されます）</label>
+        <input type="text" id="setName" placeholder="例：たかお" maxlength="24" />
+      </div>
+      <label class="imp-check" style="margin:2px 0 8px"><input type="checkbox" id="setPublic" /> ランキング・活動フィードに公開する</label>
+      <p class="imp-note">ONにすると、あなたの<b>表示名・達成数・活動（夢の追加/達成）</b>が、参加中の他ユーザーに見えるようになります。OFFにすればいつでも非公開に戻せます。夢の内容そのものは、あなたが共有リンクを送らない限り他人には見えません。</p>
+      <div class="modal-actions">
+        <button class="btn" onclick="closeSettings()">キャンセル</button>
+        <button class="btn primary" onclick="saveSettings()">保存する</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ランキングモーダル -->
+  <div class="modal-bg" id="rankBg">
+    <div class="modal" style="max-width:520px">
+      <h3>🏆 みんなの夢ランキング</h3>
+      <div class="rank-tabs">
+        <button class="btn" id="rankTabBoard" onclick="switchRankTab('board')">ランキング</button>
+        <button class="btn" id="rankTabFeed" onclick="switchRankTab('feed')">活動フィード</button>
+      </div>
+      <div id="rankBoard" class="rank-body"></div>
+      <div id="rankFeed" class="rank-body" style="display:none"></div>
+      <p class="imp-note" style="margin:12px 0 0">「⚙️ 設定」で公開をONにすると、あなたもランキングに参加できます。</p>
+      <div class="modal-actions">
+        <button class="btn" onclick="closeRanking()">閉じる</button>
       </div>
     </div>
   </div>
@@ -651,6 +702,7 @@ async function saveDream(){
     dreams.push(d);
     closeModal(); render();
     shootingStar(); playAdd(); showToast("⭐ 夢を書きとめたよ", 2000);
+    logActivity("add", d.text);
     if(mode!=="cloud") save();
   }
 }
@@ -659,7 +711,7 @@ async function toggleDone(id){
   d.done = !d.done;
   d.doneDate = d.done ? new Date().toLocaleDateString("ja-JP") : null;
   render();
-  if(d.done){ burstConfetti(); playAchieve(); showToast(CONGRATS[Math.floor(Math.random()*CONGRATS.length)]); }
+  if(d.done){ burstConfetti(); playAchieve(); showToast(CONGRATS[Math.floor(Math.random()*CONGRATS.length)]); logActivity("done", d.text); }
   if(mode==="cloud") await dbUpdate(d); else save();
 }
 
@@ -932,6 +984,80 @@ async function commitImport(items){
   alert(items.length + "件の夢を取り込みました 🌠");
 }
 
+/* ---------- プロフィール / 設定 / ログ / ランキング ---------- */
+let myProfile = null;
+async function loadProfile(){
+  if(mode!=="cloud" || !session){ myProfile = null; return; }
+  try {
+    let { data } = await sb.from("profiles").select("*").eq("id", session.user.id).maybeSingle();
+    if(!data){ const ins = await sb.from("profiles").insert({ id: session.user.id }).select().single(); data = ins.data; }
+    myProfile = data;
+  } catch(e){ console.warn("プロフィール取得失敗", e); myProfile = null; }
+}
+function openSettings(){
+  if(mode!=="cloud"){ alert("設定はログイン後に使えます"); return; }
+  document.getElementById("setName").value = (myProfile && myProfile.display_name) || "";
+  document.getElementById("setPublic").checked = !!(myProfile && myProfile.is_public);
+  document.getElementById("settingsBg").classList.add("open");
+}
+function closeSettings(){ document.getElementById("settingsBg").classList.remove("open"); }
+async function saveSettings(){
+  const name = document.getElementById("setName").value.trim();
+  const isPublic = document.getElementById("setPublic").checked;
+  if(isPublic && !name){ alert("公開するには表示名を入力してね"); return; }
+  const { error } = await sb.from("profiles").update({ display_name: name, is_public: isPublic }).eq("id", session.user.id);
+  if(error){ alert("保存に失敗しました（SQLの適用がまだかもしれません）"); console.error(error); return; }
+  if(myProfile){ myProfile.display_name = name; myProfile.is_public = isPublic; }
+  else myProfile = { display_name: name, is_public: isPublic };
+  closeSettings(); showToast("⚙️ 設定を保存したよ", 1800);
+}
+async function logActivity(kind, text){
+  if(mode!=="cloud" || !myProfile || !myProfile.is_public) return;
+  try { await sb.from("activity").insert({ kind, dream_text: (text||"").slice(0,120) }); } catch(e){ console.warn("ログ記録失敗", e); }
+}
+function switchRankTab(t){
+  document.getElementById("rankTabBoard").classList.toggle("on", t==="board");
+  document.getElementById("rankTabFeed").classList.toggle("on", t==="feed");
+  document.getElementById("rankBoard").style.display = t==="board" ? "block" : "none";
+  document.getElementById("rankFeed").style.display  = t==="feed"  ? "block" : "none";
+}
+function timeAgo(iso){
+  try { const diff = (Date.now() - new Date(iso).getTime())/1000;
+    if(diff<60) return "たった今";
+    if(diff<3600) return Math.floor(diff/60)+"分前";
+    if(diff<86400) return Math.floor(diff/3600)+"時間前";
+    return Math.floor(diff/86400)+"日前";
+  } catch(e){ return ""; }
+}
+async function openRanking(){
+  if(!CLOUD || !sb){ alert("ランキングはクラウド接続時に使えます"); return; }
+  switchRankTab("board");
+  document.getElementById("rankBoard").innerHTML = '<div class="rank-empty">読み込み中…</div>';
+  document.getElementById("rankFeed").innerHTML  = '<div class="rank-empty">読み込み中…</div>';
+  document.getElementById("rankBg").classList.add("open");
+  const lb = await sb.rpc("get_leaderboard");
+  const board = document.getElementById("rankBoard");
+  if(lb.error){ board.innerHTML = '<div class="rank-empty">ランキング機能はまだ準備中です（SQL未適用）</div>'; }
+  else if(!lb.data || !lb.data.length){ board.innerHTML = '<div class="rank-empty">まだ公開参加者がいません。<br>「⚙️ 設定」で公開をONにすると、あなたが最初の参加者に 🏆</div>'; }
+  else {
+    board.innerHTML = lb.data.map((r,i)=>{
+      const medal = i===0?"🥇":i===1?"🥈":i===2?"🥉":(i+1);
+      return `<div class="rank-row"><span class="rank-num">${medal}</span><span class="rank-name">${escapeHtml(r.display_name)}</span><span class="rank-score"><b>${r.done_count}</b> 達成 / ${r.total_count}件</span></div>`;
+    }).join("");
+  }
+  const fd = await sb.rpc("get_activity_feed");
+  const feed = document.getElementById("rankFeed");
+  if(fd.error){ feed.innerHTML = '<div class="rank-empty">フィード機能はまだ準備中です（SQL未適用）</div>'; }
+  else if(!fd.data || !fd.data.length){ feed.innerHTML = '<div class="rank-empty">まだ活動がありません</div>'; }
+  else {
+    feed.innerHTML = fd.data.map(a=>{
+      const verb = a.kind==="done" ? "を達成しました 🎉" : "を追加しました ✍️";
+      return `<div class="feed-row"><span class="who">${escapeHtml(a.display_name)}</span> さんが「${escapeHtml((a.dream_text||"").slice(0,40))}」${verb}<span class="when">${timeAgo(a.created_at)}</span></div>`;
+    }).join("");
+  }
+}
+function closeRanking(){ document.getElementById("rankBg").classList.remove("open"); }
+
 /* ---------- 認証 ---------- */
 function showAuth(){ document.getElementById("authScreen").classList.add("open"); document.querySelector(".wrap").style.display = "none"; }
 function hideAuth(){ document.getElementById("authScreen").classList.remove("open"); document.querySelector(".wrap").style.display = "block"; }
@@ -1119,6 +1245,8 @@ async function init(){
   setAuthMode("login");
   document.getElementById("modalBg").addEventListener("click", e => { if(e.target.id==="modalBg") closeModal(); });
   document.getElementById("importBg").addEventListener("click", e => { if(e.target.id==="importBg") closeImport(); });
+  document.getElementById("settingsBg").addEventListener("click", e => { if(e.target.id==="settingsBg") closeSettings(); });
+  document.getElementById("rankBg").addEventListener("click", e => { if(e.target.id==="rankBg") closeRanking(); });
   document.getElementById("mText").addEventListener("keydown", e => { if(e.key==="Enter"){ e.preventDefault(); saveDream(); } });
   document.getElementById("authPass").addEventListener("keydown", e => { if(e.key==="Enter") submitAuth(); });
 
@@ -1131,13 +1259,13 @@ async function init(){
     sb.auth.onAuthStateChange(async (event, s) => {
       session = s;
       if(event==="PASSWORD_RECOVERY"){ recovering = true; showAuth(); setAuthMode("newpass"); return; }
-      if(event==="SIGNED_IN"){ if(recovering) return; mode="cloud"; hideAuth(); await dbLoad(); render(); refreshAcct(); }
-      else if(event==="SIGNED_OUT"){ mode="local"; session=null; dreams=[]; render(); refreshAcct(); showAuth(); }
+      if(event==="SIGNED_IN"){ if(recovering) return; mode="cloud"; hideAuth(); await dbLoad(); await loadProfile(); render(); refreshAcct(); }
+      else if(event==="SIGNED_OUT"){ mode="local"; session=null; myProfile=null; dreams=[]; render(); refreshAcct(); showAuth(); }
     });
     if(isRecovery){ recovering = true; showAuth(); setAuthMode("newpass"); return; }
     const { data } = await sb.auth.getSession();
     session = data.session;
-    if(session){ mode="cloud"; hideAuth(); await dbLoad(); render(); refreshAcct(); }
+    if(session){ mode="cloud"; hideAuth(); await dbLoad(); await loadProfile(); render(); refreshAcct(); }
     else { showAuth(); }
   } else {
     mode = "local"; loadLocal(); render();
