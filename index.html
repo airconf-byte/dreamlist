@@ -712,7 +712,7 @@ async function saveDream(){
     if(mode==="cloud"){ const row = await dbInsert(d); if(row) d.id = row.id; }
     dreams.push(d);
     closeModal(); render();
-    shootingStar(); playAdd(); showToast("⭐ 夢を書きとめたよ", 2000);
+    shootingStar(); playAdd(); showToast(ADD_MSGS[Math.floor(Math.random()*ADD_MSGS.length)], 2400);
     logActivity("add");
     if(mode!=="cloud") save();
   }
@@ -1197,6 +1197,7 @@ function toggleMute(){ muted = !muted; localStorage.setItem("yumeMuted", muted?"
 /* ---------- トースト ---------- */
 function showToast(html, ms){ const el=document.getElementById("toast"); el.innerHTML=html; el.classList.add("show"); clearTimeout(el._t); el._t=setTimeout(()=>el.classList.remove("show"), ms||2600); }
 const CONGRATS = ["🎉 おめでとう！ひとつ叶ったね","✨ やったね！夢に一歩前進","🌟 達成！その調子だよ","🎊 素晴らしい！夢が現実に","🌠 ひとつ星が灯った！"];
+const ADD_MSGS = ["⭐ 楽しみだね！叶えていこう","✨ いい夢だね！書きとめたよ","🌱 夢の種をまいたよ","🌠 願いは口に出すと近づく","💫 わくわくするね！","🖋️ 未来のあなたが動き出す","📖 夢リストに刻んだよ","🚀 その夢、応援してる！"];
 
 /* ---------- 流れ星（夢を追加した時） ---------- */
 function shootingStar(){
