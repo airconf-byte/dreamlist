@@ -229,6 +229,19 @@
   .imp-check input { width: 16px; height: 16px; accent-color: var(--violet); }
   .imp-preview { font-size: 12px; color: var(--text-soft); background: rgba(255,255,255,.04); border: 1px solid var(--stroke); border-radius: 10px; padding: 10px 12px; min-height: 20px; line-height: 1.8; }
 
+  /* パスワード表示トグル */
+  .pw-wrap { position: relative; }
+  .pw-wrap input { padding-right: 42px !important; }
+  .pw-eye { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; font-size: 16px; opacity: .6; line-height: 1; padding: 4px; }
+  .pw-eye:hover { opacity: 1; }
+
+  /* お祝い/追加トースト */
+  .toast { position: fixed; left: 50%; top: 26px; transform: translate(-50%, -180%); z-index: 70;
+    background: var(--grad); color: #10122c; font-family: "Zen Kaku Gothic New", sans-serif; font-weight: 900;
+    padding: 12px 24px; border-radius: 999px; box-shadow: 0 14px 44px rgba(0,0,0,.42); font-size: 15px;
+    opacity: 0; transition: transform .45s cubic-bezier(.2,1.3,.3,1), opacity .3s; pointer-events: none; white-space: nowrap; max-width: 92vw; }
+  .toast.show { transform: translate(-50%, 0); opacity: 1; }
+
   .empty-note { text-align: center; color: var(--text-soft); padding: 40px; font-size: 14px; }
   footer { text-align: center; color: var(--text-soft); font-size: 12px; margin-top: 46px; opacity: .7; }
   #confetti { position: fixed; inset: 0; pointer-events: none; z-index: 60; }
@@ -261,7 +274,7 @@
         <button class="btn" id="tabSignup" onclick="setAuthMode('signup')">新規登録</button>
       </div>
       <div class="field" id="fieldEmail"><input type="text" id="authEmail" placeholder="メールアドレス" autocomplete="email" /></div>
-      <div class="field" id="fieldPass"><input type="password" id="authPass" placeholder="パスワード（6文字以上）" autocomplete="current-password" /></div>
+      <div class="field" id="fieldPass"><div class="pw-wrap"><input type="password" id="authPass" placeholder="パスワード（6文字以上）" autocomplete="current-password" /><button type="button" class="pw-eye" id="pwEye" onclick="togglePw()" title="表示/非表示">👁</button></div></div>
       <button class="btn primary" style="width:100%" id="authSubmit" onclick="submitAuth()">ログイン</button>
       <div class="auth-links">
         <a id="forgotLink" onclick="setAuthMode('reset')">パスワードをお忘れの方はこちら</a>
@@ -292,6 +305,7 @@
       <button class="btn" onclick="shareList()">🔗 共有リンクをコピー</button>
       <button class="btn" onclick="openImport()">📊 表から取込</button>
       <button class="btn" onclick="exportJson()">⬇ バックアップ</button>
+      <button class="btn" id="muteBtn" onclick="toggleMute()" title="効果音のオン/オフ">🔊</button>
       <span class="acct" id="acct"></span>
       <button class="btn" id="logoutBtn" style="display:none" onclick="logout()">ログアウト</button>
     </div>
@@ -299,6 +313,15 @@
     <div class="tabs" id="tabs"></div>
 
     <div class="controls" id="controls">
+      <label class="ctrl"><span>🎨 テーマ</span>
+        <select id="themeSel" onchange="applyTheme(this.value)">
+          <option value="twilight">宵の空</option>
+          <option value="aurora">オーロラ</option>
+          <option value="sunset">夕焼け</option>
+          <option value="sakura">夜桜</option>
+          <option value="ocean">深海</option>
+        </select>
+      </label>
       <label class="ctrl"><span>並べ替え</span>
         <select id="sortSel" onchange="setSort(this.value)">
           <option value="added">追加順</option>
@@ -380,6 +403,7 @@
     </div>
   </div>
 
+  <div id="toast" class="toast"></div>
   <canvas id="confetti"></canvas>
 
 <script>
@@ -423,6 +447,9 @@ let mode = "local";          // "local" | "cloud" | "shared"
 let session = null;
 let authMode = "login";      // "login" | "signup" | "reset" | "newpass"
 let recovering = false;      // パスワード再設定リンクから来た状態
+let themeKey = "twilight";
+let audioCtx = null;
+let muted = localStorage.getItem("yumeMuted") === "1";
 
 function catOf(key){ return CATEGORIES.find(c => c.key === key) || CATEGORIES[0]; }
 function uid(){ return "d" + Math.random().toString(36).slice(2,9); }
@@ -623,6 +650,7 @@ async function saveDream(){
     if(mode==="cloud"){ const row = await dbInsert(d); if(row) d.id = row.id; }
     dreams.push(d);
     closeModal(); render();
+    shootingStar(); playAdd(); showToast("⭐ 夢を書きとめたよ", 2000);
     if(mode!=="cloud") save();
   }
 }
@@ -631,7 +659,7 @@ async function toggleDone(id){
   d.done = !d.done;
   d.doneDate = d.done ? new Date().toLocaleDateString("ja-JP") : null;
   render();
-  if(d.done) burstConfetti();
+  if(d.done){ burstConfetti(); playAchieve(); showToast(CONGRATS[Math.floor(Math.random()*CONGRATS.length)]); }
   if(mode==="cloud") await dbUpdate(d); else save();
 }
 
@@ -921,6 +949,7 @@ function setAuthMode(m){
   tabs.style.display = "flex"; fEmail.style.display = "block"; fPass.style.display = "block";
   forgot.style.display = "none"; back.style.display = "none";
   pass.placeholder = "パスワード（6文字以上）";
+  pass.type = "password"; const eye = document.getElementById("pwEye"); if(eye) eye.textContent = "👁";
   document.getElementById("tabLogin").classList.toggle("on", m==="login");
   document.getElementById("tabSignup").classList.toggle("on", m==="signup");
   if(m==="login"){
@@ -990,6 +1019,72 @@ function refreshAcct(){
   else { acct.textContent = ""; lb.style.display = "none"; }
 }
 
+/* ---------- テーマ切替 ---------- */
+const THEMES = {
+  twilight: { grad:"linear-gradient(120deg,#4fe3d0,#9a7bff 55%,#ff77c8)", bg0:"#2a2e64", bg1:"#3a3f86",
+    sky:"radial-gradient(1200px 720px at 78% -6%, #6a5bd6 0%, transparent 56%), radial-gradient(1000px 820px at 10% 108%, #2f86b4 0%, transparent 54%), radial-gradient(900px 640px at 92% 102%, #c465ac 0%, transparent 48%), linear-gradient(180deg,#454aa0,#2f3470 78%)" },
+  aurora:   { grad:"linear-gradient(120deg,#5ef0b0,#4fd0e3 50%,#8a7bff)", bg0:"#123a3f", bg1:"#1e5a5c",
+    sky:"radial-gradient(1200px 720px at 75% -8%, #2fae8f 0%, transparent 55%), radial-gradient(1000px 820px at 12% 108%, #2f7fb4 0%, transparent 55%), radial-gradient(900px 640px at 95% 100%, #6a5bd6 0%, transparent 48%), linear-gradient(180deg,#22615e,#153f45 80%)" },
+  sunset:   { grad:"linear-gradient(120deg,#ffd36b,#ff8f6b 50%,#ff6bcf)", bg0:"#4a2a55", bg1:"#6e3a5e",
+    sky:"radial-gradient(1200px 720px at 80% -6%, #ff9a5b 0%, transparent 52%), radial-gradient(1000px 820px at 10% 108%, #b6579a 0%, transparent 54%), radial-gradient(900px 640px at 60% 110%, #ffcf6b 0%, transparent 42%), linear-gradient(180deg,#5a3a70,#3a2450 80%)" },
+  sakura:   { grad:"linear-gradient(120deg,#ffb3d9,#c9a3ff 55%,#ffd36b)", bg0:"#3a2e52", bg1:"#52406e",
+    sky:"radial-gradient(1200px 720px at 78% -6%, #b57bd6 0%, transparent 55%), radial-gradient(1000px 820px at 10% 108%, #d66a9a 0%, transparent 52%), radial-gradient(900px 640px at 92% 102%, #ff9ac4 0%, transparent 46%), linear-gradient(180deg,#5a4680,#382c52 80%)" },
+  ocean:    { grad:"linear-gradient(120deg,#4fe3d0,#4fa3e3 55%,#7b8bff)", bg0:"#12324f", bg1:"#1c4d72",
+    sky:"radial-gradient(1200px 720px at 78% -6%, #2f7fb4 0%, transparent 56%), radial-gradient(1000px 820px at 10% 108%, #2fb0c9 0%, transparent 54%), radial-gradient(900px 640px at 92% 102%, #5a7bd6 0%, transparent 48%), linear-gradient(180deg,#1c4d72,#123049 80%)" },
+};
+function applyTheme(key){
+  const t = THEMES[key] || THEMES.twilight;
+  const r = document.documentElement.style;
+  r.setProperty("--bg-0", t.bg0); r.setProperty("--bg-1", t.bg1); r.setProperty("--grad", t.grad);
+  const sky = document.querySelector(".sky"); if(sky) sky.style.background = t.sky;
+  themeKey = key; localStorage.setItem("yumeTheme", key);
+  const sel = document.getElementById("themeSel"); if(sel) sel.value = key;
+}
+
+/* ---------- 効果音（コード内で合成・外部ファイル不要） ---------- */
+function ensureAudio(){ if(!audioCtx){ try{ audioCtx = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} } return audioCtx; }
+function beep(freq, start, dur, type, gain){
+  const ac = ensureAudio(); if(!ac || muted) return;
+  const o = ac.createOscillator(), g = ac.createGain();
+  o.type = type || "sine"; o.frequency.value = freq;
+  o.connect(g); g.connect(ac.destination);
+  const t0 = ac.currentTime + start;
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.exponentialRampToValueAtTime(gain || 0.2, t0 + 0.02);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  o.start(t0); o.stop(t0 + dur + 0.03);
+}
+function playAchieve(){ if(muted) return; [523.25,659.25,783.99,1046.5].forEach((f,i)=>beep(f, i*0.09, 0.4, "triangle", 0.25)); beep(1568, 0.42, 0.5, "sine", 0.12); }
+function playAdd(){ if(muted) return; beep(880,0,0.12,"sine",0.16); beep(1320,0.07,0.18,"sine",0.12); }
+function updateMuteBtn(){ const b=document.getElementById("muteBtn"); if(b) b.textContent = muted ? "🔇" : "🔊"; }
+function toggleMute(){ muted = !muted; localStorage.setItem("yumeMuted", muted?"1":"0"); updateMuteBtn(); if(!muted) beep(880,0,0.1,"sine",0.12); }
+
+/* ---------- トースト ---------- */
+function showToast(html, ms){ const el=document.getElementById("toast"); el.innerHTML=html; el.classList.add("show"); clearTimeout(el._t); el._t=setTimeout(()=>el.classList.remove("show"), ms||2600); }
+const CONGRATS = ["🎉 おめでとう！ひとつ叶ったね","✨ やったね！夢に一歩前進","🌟 達成！その調子だよ","🎊 素晴らしい！夢が現実に","🌠 ひとつ星が灯った！"];
+
+/* ---------- 流れ星（夢を追加した時） ---------- */
+function shootingStar(){
+  const cv=document.getElementById("confetti"), ctx=cv.getContext("2d");
+  cv.width=innerWidth; cv.height=innerHeight;
+  let x=innerWidth*(0.12+Math.random()*0.35), y=-30;
+  const vx=9+Math.random()*3, vy=11+Math.random()*3; let t=0;
+  (function anim(){
+    ctx.clearRect(0,0,cv.width,cv.height);
+    const tx=x-vx*11, ty=y-vy*11;
+    const g=ctx.createLinearGradient(x,y,tx,ty);
+    g.addColorStop(0,"rgba(255,255,255,.95)"); g.addColorStop(.35,"rgba(190,205,255,.5)"); g.addColorStop(1,"rgba(190,205,255,0)");
+    ctx.strokeStyle=g; ctx.lineWidth=3; ctx.lineCap="round";
+    ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(tx,ty); ctx.stroke();
+    ctx.beginPath(); ctx.fillStyle="#fff"; ctx.shadowColor="#cfe0ff"; ctx.shadowBlur=16; ctx.arc(x,y,2.6,0,7); ctx.fill(); ctx.shadowBlur=0;
+    x+=vx; y+=vy; t++;
+    if(t<75 && y<cv.height+50) requestAnimationFrame(anim); else ctx.clearRect(0,0,cv.width,cv.height);
+  })();
+}
+
+/* ---------- パスワード表示切替 ---------- */
+function togglePw(){ const i=document.getElementById("authPass"), e=document.getElementById("pwEye"); const show=i.type==="password"; i.type=show?"text":"password"; e.textContent=show?"🙈":"👁"; }
+
 /* ---------- 紙吹雪 ---------- */
 function burstConfetti(){
   const cv = document.getElementById("confetti");
@@ -1019,6 +1114,8 @@ function burstConfetti(){
 /* ---------- 起動 ---------- */
 async function init(){
   buildModalControls();
+  applyTheme(localStorage.getItem("yumeTheme") || "twilight");
+  updateMuteBtn();
   setAuthMode("login");
   document.getElementById("modalBg").addEventListener("click", e => { if(e.target.id==="modalBg") closeModal(); });
   document.getElementById("importBg").addEventListener("click", e => { if(e.target.id==="importBg") closeImport(); });
