@@ -207,7 +207,8 @@
   .card .glowstar { position: absolute; right: 8px; top: 6px; font-size: 15px; filter: drop-shadow(0 0 8px rgba(255,211,107,.9)); pointer-events: none; }
   .card.reorderable { cursor: grab; }
   .card.reorderable:active { cursor: grabbing; }
-  .card.dragging { opacity: .92; transform: scale(1.03); box-shadow: var(--sh-3); z-index: 5; pointer-events: none; }
+  .card.dragging { box-shadow: var(--sh-3); opacity: .98; }
+  .card-placeholder { border: 2px dashed rgba(255,255,255,.28); border-radius: 14px; background: rgba(255,255,255,.035); box-sizing: border-box; }
   .reorder-hint { text-align: center; font-size: 11px; color: var(--text-soft); opacity: .65; margin: -10px 0 16px; min-height: 14px; letter-spacing: .02em; }
 
   .add-card {
@@ -652,13 +653,91 @@ function render(){
 }
 /* ---------- ドラッグ&ドロップ並べ替え（マウス/タッチ共通） ---------- */
 let reorderOn = false;
-let dragEl = null;
-function cardUnderPoint(x, y){
-  const el = document.elementFromPoint(x, y);
-  const card = (el && el.closest) ? el.closest(".card") : null;
-  return (card && card.parentElement && card.parentElement.id === "grid" && card !== dragEl) ? card : null;
-}
+let dragCard = null, placeholder = null, dragOffX = 0, dragOffY = 0;
 const LONGPRESS_MS = 240, TOUCH_CANCEL = 10, MOUSE_START = 6;
+
+function cardUnderPoint(x, y){
+  const grid = document.getElementById("grid");
+  const cards = [...grid.querySelectorAll(".card")].filter(c => c !== dragCard);
+  for(const c of cards){
+    const r = c.getBoundingClientRect();
+    if(x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) return c;
+  }
+  return null;
+}
+// 他カードを滑らかに移動させる（FLIP）
+function flipReorder(mutate){
+  const grid = document.getElementById("grid");
+  const items = [...grid.children].filter(el => el !== dragCard);
+  const first = new Map();
+  items.forEach(el => first.set(el, el.getBoundingClientRect()));
+  mutate();
+  items.forEach(el => {
+    const f = first.get(el); if(!f) return;
+    const l = el.getBoundingClientRect();
+    const dx = f.left - l.left, dy = f.top - l.top;
+    if(dx || dy){
+      el.style.transition = "none";
+      el.style.transform = `translate(${dx}px, ${dy}px)`;
+      requestAnimationFrame(() => {
+        el.style.transition = "transform .22s cubic-bezier(.2,.8,.2,1)";
+        el.style.transform = "";
+        el.addEventListener("transitionend", () => { el.style.transition = ""; el.style.transform = ""; }, { once:true });
+      });
+    }
+  });
+}
+function moveDragCard(x, y){ if(dragCard) dragCard.style.transform = `translate(${x-dragOffX}px, ${y-dragOffY}px) scale(1.03)`; }
+function liftCard(card, x, y){
+  const grid = document.getElementById("grid");
+  const rect = card.getBoundingClientRect();
+  dragOffX = x - rect.left; dragOffY = y - rect.top;
+  placeholder = document.createElement("div");
+  placeholder.className = "card-placeholder";
+  placeholder.style.width = rect.width + "px";
+  placeholder.style.height = rect.height + "px";
+  grid.insertBefore(placeholder, card);
+  dragCard = card; card.classList.add("dragging");
+  card.style.transition = "none";
+  card.style.position = "fixed"; card.style.margin = "0";
+  card.style.width = rect.width + "px"; card.style.height = rect.height + "px";
+  card.style.left = "0"; card.style.top = "0"; card.style.zIndex = "1000"; card.style.pointerEvents = "none";
+  moveDragCard(x, y);
+}
+function dropCard(){
+  const grid = document.getElementById("grid");
+  const card = dragCard;
+  const fromRect = card.getBoundingClientRect();
+  grid.insertBefore(card, placeholder);
+  placeholder.remove(); placeholder = null;
+  ["position","margin","width","height","left","top","zIndex","pointerEvents","transform","transition"].forEach(p => card.style[p] = "");
+  card.classList.remove("dragging");
+  const toRect = card.getBoundingClientRect();
+  const dx = fromRect.left - toRect.left, dy = fromRect.top - toRect.top;
+  card.style.transition = "none";
+  card.style.transform = `translate(${dx}px, ${dy}px) scale(1.03)`;
+  requestAnimationFrame(() => {
+    card.style.transition = "transform .2s cubic-bezier(.2,.8,.2,1)";
+    card.style.transform = "";
+    card.addEventListener("transitionend", () => { card.style.transition = ""; card.style.transform = ""; }, { once:true });
+  });
+  dragCard = null;
+  commitOrder();
+}
+function commitOrder(){
+  const grid = document.getElementById("grid");
+  const ids = [...grid.querySelectorAll(".card")].map(c => c.dataset.id);
+  const byId = {}; dreams.forEach(d => byId[d.id] = d);
+  const oldSort = {}; dreams.forEach(d => oldSort[d.id] = d.sort);
+  const seen = new Set(ids);
+  const newOrder = ids.map(id => byId[id]).filter(Boolean);
+  dreams.forEach(d => { if(!seen.has(d.id)) newOrder.push(d); });
+  dreams = newOrder;
+  dreams.forEach((d, i) => d.sort = i);
+  const changed = dreams.filter(d => oldSort[d.id] !== d.sort);
+  if(mode === "cloud"){ (async () => { for(const d of changed){ await sb.from("dreams").update({ sort: d.sort }).eq("id", d.id); } })(); }
+  else save();
+}
 function attachCardDrag(card, id){
   card.addEventListener("pointerdown", (e) => {
     if(e.button != null && e.button !== 0) return;
@@ -666,26 +745,33 @@ function attachCardDrag(card, id){
     const startX = e.clientX, startY = e.clientY, pid = e.pointerId;
     const isTouch = e.pointerType === "touch";
     let dragging = false, timer = null;
-    const beginDrag = () => {
-      dragging = true; dragEl = card; card.classList.add("dragging");
+    const begin = () => {
+      if(dragging) return;
+      dragging = true;
       try { card.setPointerCapture(pid); } catch(_){}
+      liftCard(card, startX, startY);
       if(isTouch && navigator.vibrate){ try { navigator.vibrate(12); } catch(_){} }
     };
-    if(isTouch) timer = setTimeout(beginDrag, LONGPRESS_MS);
+    if(isTouch) timer = setTimeout(begin, LONGPRESS_MS);
     const move = (ev) => {
       if(!dragging){
         const dist = Math.hypot(ev.clientX - startX, ev.clientY - startY);
         if(isTouch){ if(dist > TOUCH_CANCEL){ clearTimeout(timer); cleanup(); return; } }
-        else if(dist > MOUSE_START){ beginDrag(); }
+        else if(dist > MOUSE_START){ begin(); }
         if(!dragging) return;
       }
       ev.preventDefault();
+      moveDragCard(ev.clientX, ev.clientY);
       const t = cardUnderPoint(ev.clientX, ev.clientY);
-      if(t){ const r = t.getBoundingClientRect(); (ev.clientY > r.top + r.height/2) ? t.after(dragEl) : t.before(dragEl); }
+      if(t){
+        const r = t.getBoundingClientRect();
+        const ref = (ev.clientY > r.top + r.height/2) ? t.nextSibling : t;
+        if(ref !== placeholder) flipReorder(() => document.getElementById("grid").insertBefore(placeholder, ref));
+      }
     };
     const up = () => {
       if(timer) clearTimeout(timer);
-      if(dragging){ card.classList.remove("dragging"); card._dragged = true; finishReorder(); dragEl = null; }
+      if(dragging){ card._dragged = true; dropCard(); }
       cleanup();
     };
     const cleanup = () => {
@@ -699,21 +785,6 @@ function attachCardDrag(card, id){
   });
   // ドラッグ直後のクリック（編集/達成）誤爆を抑制
   card.addEventListener("click", (e) => { if(card._dragged){ e.stopPropagation(); e.preventDefault(); card._dragged = false; } }, true);
-}
-function finishReorder(){
-  const grid = document.getElementById("grid");
-  const ids = [...grid.querySelectorAll(".card")].map(c => c.dataset.id);
-  const byId = {}; dreams.forEach(d => byId[d.id] = d);
-  const oldSort = {}; dreams.forEach(d => oldSort[d.id] = d.sort);
-  const seen = new Set(ids);
-  const newOrder = ids.map(id => byId[id]).filter(Boolean);
-  dreams.forEach(d => { if(!seen.has(d.id)) newOrder.push(d); });
-  dreams = newOrder;
-  dreams.forEach((d, i) => d.sort = i);
-  const changed = dreams.filter(d => oldSort[d.id] !== d.sort);
-  if(mode === "cloud"){ (async () => { for(const d of changed){ await sb.from("dreams").update({ sort: d.sort }).eq("id", d.id); } })(); }
-  else save();
-  render();
 }
 
 function cardEl(d){
