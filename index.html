@@ -128,6 +128,7 @@
   .btn.primary { background: var(--grad); color: #191540; border: 1px solid transparent; font-weight: 800;
     box-shadow: 0 8px 22px rgba(130,110,255,.36), inset 0 1px 0 rgba(255,255,255,.45); }
   .btn.primary:hover { filter: brightness(1.06); box-shadow: 0 12px 30px rgba(130,110,255,.5), inset 0 1px 0 rgba(255,255,255,.55); }
+  .btn.icon-btn { padding: 10px 13px; font-size: 15px; line-height: 1; }
   .acct { font-size: 12px; color: var(--text-soft); }
 
   /* メニュー（ドロップダウン） */
@@ -350,6 +351,7 @@
     <div class="toolbar" id="toolbar">
       <button class="btn primary" onclick="openAdd()">＋ 夢を追加</button>
       <button class="btn" onclick="openRanking()">🏆 ランキング</button>
+      <button class="btn icon-btn" onclick="location.reload()" title="画面を更新">🔄</button>
       <div class="menu-wrap">
         <button class="btn" id="menuBtn" onclick="toggleMenu(event)">⋯ メニュー</button>
         <div class="menu" id="menu">
