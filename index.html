@@ -205,6 +205,12 @@
   .iconbtn:hover { opacity: 1; background: rgba(255,255,255,.08); }
   .iconbtn.on { opacity: 1; color: var(--violet); background: rgba(154,123,255,.16); }
   .card .glowstar { position: absolute; right: 8px; top: 6px; font-size: 15px; filter: drop-shadow(0 0 8px rgba(255,211,107,.9)); pointer-events: none; }
+  .drag-handle { cursor: grab; touch-action: none; color: var(--text-soft); opacity: .5; font-size: 14px; line-height: 1; padding: 0 5px 0 0; margin-left: -2px; user-select: none; -webkit-user-select: none; }
+  .drag-handle:hover { opacity: .9; }
+  .drag-handle:active { cursor: grabbing; }
+  .card.dragging { opacity: .92; transform: scale(1.02); box-shadow: var(--sh-3); z-index: 5; pointer-events: none; }
+  .card.dragging .drag-handle { pointer-events: auto; }
+  .reorder-hint { text-align: center; font-size: 11px; color: var(--text-soft); opacity: .65; margin: -10px 0 16px; min-height: 14px; letter-spacing: .02em; }
 
   .add-card {
     border: 1.5px dashed var(--stroke); background: rgba(255,255,255,.02); border-radius: 12px;
@@ -406,6 +412,7 @@
       </label>
     </div>
 
+    <div class="reorder-hint" id="reorderHint"></div>
     <div class="grid" id="grid"></div>
     <div class="empty-note" id="emptyNote" style="display:none">このカテゴリはまだ空っぽ。「＋」から夢を書いてみよう 🌱</div>
 
@@ -630,6 +637,9 @@ function render(){
   if(activeTab!=="all") list = list.filter(d => d.category===activeTab);
   if(deadlineFilter!=="all") list = list.filter(d => (d.deadline||"いつか")===deadlineFilter);
   list = sortDreams(list);
+  reorderOn = (sortMode==="added" && groupMode==="none" && activeTab==="all" && deadlineFilter==="all" && !readOnly);
+  const hint = document.getElementById("reorderHint");
+  if(hint) hint.textContent = readOnly ? "" : (reorderOn ? "⠿ をドラッグして順番を入れ替えられます" : "手動並べ替えは「並べ替え=追加順・ジャンル=すべて・絞り込みなし」で使えます");
   if(groupMode==="none") list.forEach(d => grid.appendChild(cardEl(d)));
   else renderGrouped(grid, list);
   const filtered = activeTab!=="all" || deadlineFilter!=="all";
@@ -642,14 +652,64 @@ function render(){
     grid.appendChild(add);
   }
 }
+/* ---------- ドラッグ&ドロップ並べ替え（マウス/タッチ共通） ---------- */
+let reorderOn = false;
+let dragEl = null;
+function cardUnderPoint(x, y){
+  const el = document.elementFromPoint(x, y);
+  const card = (el && el.closest) ? el.closest(".card") : null;
+  return (card && card.parentElement && card.parentElement.id === "grid" && card !== dragEl) ? card : null;
+}
+function attachDrag(handle, card, id){
+  handle.addEventListener("pointerdown", (e) => {
+    if(e.button != null && e.button !== 0) return;
+    e.preventDefault();
+    try { handle.setPointerCapture(e.pointerId); } catch(_){}
+    dragEl = card; card.classList.add("dragging");
+    const move = (ev) => {
+      ev.preventDefault();
+      const t = cardUnderPoint(ev.clientX, ev.clientY);
+      if(t){ const r = t.getBoundingClientRect(); (ev.clientY > r.top + r.height/2) ? t.after(dragEl) : t.before(dragEl); }
+    };
+    const end = () => {
+      handle.removeEventListener("pointermove", move);
+      handle.removeEventListener("pointerup", end);
+      handle.removeEventListener("pointercancel", end);
+      card.classList.remove("dragging");
+      finishReorder();
+      dragEl = null;
+    };
+    handle.addEventListener("pointermove", move);
+    handle.addEventListener("pointerup", end);
+    handle.addEventListener("pointercancel", end);
+  });
+}
+function finishReorder(){
+  const grid = document.getElementById("grid");
+  const ids = [...grid.querySelectorAll(".card")].map(c => c.dataset.id);
+  const byId = {}; dreams.forEach(d => byId[d.id] = d);
+  const oldSort = {}; dreams.forEach(d => oldSort[d.id] = d.sort);
+  const seen = new Set(ids);
+  const newOrder = ids.map(id => byId[id]).filter(Boolean);
+  dreams.forEach(d => { if(!seen.has(d.id)) newOrder.push(d); });
+  dreams = newOrder;
+  dreams.forEach((d, i) => d.sort = i);
+  const changed = dreams.filter(d => oldSort[d.id] !== d.sort);
+  if(mode === "cloud"){ (async () => { for(const d of changed){ await sb.from("dreams").update({ sort: d.sort }).eq("id", d.id); } })(); }
+  else save();
+  render();
+}
+
 function cardEl(d){
   const c = catOf(d.category);
   const el = document.createElement("div");
   el.className = "card" + (d.done?" done":"");
+  el.dataset.id = d.id;
   el.style.setProperty("--catcolor", c.color);
   el.innerHTML = `
     ${d.done?'<span class="glowstar">🌟</span>':''}
     <div class="head">
+      ${reorderOn?'<span class="drag-handle" title="ドラッグで並べ替え">⠿</span>':''}
       <span class="catchip">${c.emoji} ${c.label}</span>
       <span class="dead">${d.done ? '✅ '+(d.doneDate||'達成') : '⏳ '+(d.deadline||'いつか')}</span>
     </div>
@@ -675,6 +735,7 @@ function cardEl(d){
     del.onclick = async (e) => { e.stopPropagation(); if(confirm("この夢を削除する？")){ dreams = dreams.filter(x=>x.id!==d.id); render(); if(mode==="cloud") await dbDelete(d.id); else save(); } };
     row.appendChild(del);
   }
+  if(reorderOn){ const h = el.querySelector(".drag-handle"); if(h) attachDrag(h, el, d.id); }
   return el;
 }
 function escapeHtml(s){ return (s||"").replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
