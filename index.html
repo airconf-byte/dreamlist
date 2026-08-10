@@ -19,24 +19,24 @@
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
   :root {
-    --bg-0: #16171a;
-    --bg-1: #1b1c20;
-    --panel: #212227;
-    --panel-2: #292a30;
-    --stroke: rgba(255,255,255,.09);
-    --text: #ededef;
-    --text-soft: #9a9aa0;
-    --cyan: #cbbb92;
-    --violet: #d3a24c;
-    --pink: #e08a76;
-    --gold: #d3a24c;
-    --accent: #d3a24c;
-    --accent-2: #b98a3b;
-    --grad: #d3a24c;
-    --glow: none;
-    --sh-1: 0 1px 2px rgba(0,0,0,.35);
-    --sh-2: 0 6px 18px rgba(0,0,0,.38);
-    --sh-3: 0 16px 40px rgba(0,0,0,.5);
+    --bg-0: #f3f1ea;
+    --bg-1: #fdf3e2;
+    --panel: #ffffff;
+    --panel-2: #fbf4e7;
+    --stroke: rgba(70,55,30,.14);
+    --text: #34302a;
+    --text-soft: #8f8577;
+    --cyan: #c8862a;
+    --violet: #e2a233;
+    --pink: #d9694e;
+    --gold: #e2a233;
+    --accent: #e2a233;
+    --accent-2: #c8862a;
+    --grad: #e2a233;
+    --glow: 0 0 18px rgba(226,162,51,.4);
+    --sh-1: 0 1px 3px rgba(140,105,45,.12);
+    --sh-2: 0 10px 26px rgba(150,110,50,.16);
+    --sh-3: 0 22px 54px rgba(140,100,40,.22);
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; }
@@ -50,9 +50,26 @@
   }
   .sky {
     position: fixed; inset: 0; z-index: -2;
-    background: var(--bg-0);
+    background:
+      radial-gradient(1200px 700px at 50% 122%, #ffd98f 0%, rgba(255,217,143,0) 62%),
+      linear-gradient(180deg, #cfe6f6 0%, #eaf0ec 32%, #fbf3e3 70%, #ffedd4 100%);
   }
-  .stars { display: none; }
+  .stars {
+    position: fixed; inset: 0; z-index: -1; pointer-events: none;
+    background-image:
+      radial-gradient(2px 2px at 18% 22%, rgba(255,255,255,.95), transparent),
+      radial-gradient(2px 2px at 72% 15%, #ffcf7a, transparent),
+      radial-gradient(1.5px 1.5px at 42% 58%, #ffffff, transparent),
+      radial-gradient(2px 2px at 86% 40%, #ffd98f, transparent),
+      radial-gradient(1.5px 1.5px at 30% 76%, #fff2d0, transparent),
+      radial-gradient(2px 2px at 62% 68%, rgba(255,255,255,.9), transparent),
+      radial-gradient(1.5px 1.5px at 92% 80%, #ffcf7a, transparent),
+      radial-gradient(2px 2px at 8% 50%, #ffffff, transparent),
+      radial-gradient(1.5px 1.5px at 52% 30%, #ffd98f, transparent);
+    opacity: .8;
+    animation: twinkle 4s ease-in-out infinite alternate;
+  }
+  @keyframes twinkle { from { opacity: .45 } to { opacity: .95 } }
 
   #shareBanner {
     display: none;
@@ -70,12 +87,12 @@
   .wrap { max-width: 1000px; margin: 0 auto; padding: 26px 18px 90px; }
 
   header.hero { text-align: center; padding: 14px 0 6px; }
-  .kicker { letter-spacing: .34em; font-size: 10px; color: var(--text-soft); font-weight: 700; text-transform: uppercase; margin-bottom: 16px; opacity: .7; }
+  .kicker { letter-spacing: .34em; font-size: 10px; color: var(--accent-2); font-weight: 700; text-transform: uppercase; margin-bottom: 16px; opacity: .9; }
   h1 {
     font-family: "Zen Kaku Gothic New", sans-serif; font-weight: 900;
     margin: 0; font-size: 46px; letter-spacing: .01em; line-height: 1.06;
   }
-  h1 .num { color: var(--accent); padding: 0 .04em; }
+  h1 .num { color: var(--accent); padding: 0 .04em; text-shadow: 0 1px 16px rgba(226,162,51,.4); }
   .subtitle { color: var(--text-soft); margin: 15px 0 0; font-size: 13px; letter-spacing: .04em; }
   .epigraph { font-family: "Zen Kaku Gothic New", sans-serif; font-weight: 700; margin: 14px 0 0; font-size: 11.5px; letter-spacing: .3em; padding-left: .3em; color: var(--accent); }
 
@@ -88,10 +105,11 @@
   .meter-count { font-family: "Zen Kaku Gothic New", sans-serif; font-size: 15px; font-weight: 700; color: var(--text-soft); }
   .meter-count b { font-size: 38px; color: var(--accent); font-weight: 900; }
   .meter-msg { color: var(--text-soft); font-size: 13px; font-weight: 700; text-align: right; }
-  .bar { height: 8px; background: rgba(255,255,255,.07); border-radius: 999px; margin-top: 14px; overflow: hidden; }
-  .bar > i { display: block; height: 100%; width: 0; background: var(--accent); border-radius: 999px;
-    transition: width .7s cubic-bezier(.2,.9,.2,1); }
-  .stamps { margin-top: 10px; font-size: 15px; letter-spacing: 3px; min-height: 22px; opacity: .9; }
+  .bar { height: 9px; background: rgba(0,0,0,.07); border-radius: 999px; margin-top: 14px; overflow: hidden; }
+  .bar > i { display: block; height: 100%; width: 0; border-radius: 999px;
+    background: linear-gradient(90deg, var(--accent-2), var(--accent));
+    box-shadow: 0 0 10px rgba(226,162,51,.6); transition: width .7s cubic-bezier(.2,.9,.2,1); }
+  .stamps { margin-top: 10px; font-size: 15px; letter-spacing: 3px; min-height: 22px; }
 
   .toolbar { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; align-items: center; margin: 24px 0 6px; }
   .btn {
@@ -100,22 +118,23 @@
     font-weight: 700; letter-spacing: .02em; cursor: pointer;
     transition: background .18s, border-color .18s, transform .06s;
   }
-  .btn:hover { background: #31333b; border-color: rgba(255,255,255,.17); }
+  .btn:hover { background: #f6efe0; border-color: rgba(70,55,30,.22); }
   .btn:active { transform: translateY(1px); }
-  .btn.primary { background: var(--accent); color: #1a1408; border: 1px solid transparent; font-weight: 800; }
-  .btn.primary:hover { background: #e0ad57; }
+  .btn.primary { background: var(--accent); color: #3a2c0c; border: 1px solid transparent; font-weight: 800;
+    box-shadow: 0 3px 10px rgba(226,162,51,.35), inset 0 1px 0 rgba(255,255,255,.5); }
+  .btn.primary:hover { background: #edb045; }
   .btn.icon-btn { padding: 10px 12px; font-size: 15px; line-height: 1; }
   .acct { font-size: 12px; color: var(--text-soft); }
 
   /* メニュー（ドロップダウン） */
   .menu-wrap { position: relative; display: inline-block; }
   .menu { position: absolute; right: 0; top: calc(100% + 8px); z-index: 32; min-width: 232px;
-    background: linear-gradient(180deg, #26272c, #1e1f23); border: 1px solid var(--stroke); border-radius: 14px;
+    background: #ffffff; border: 1px solid var(--stroke); border-radius: 14px;
     box-shadow: 0 22px 54px rgba(0,0,0,.5); padding: 6px; display: none; }
   .menu.open { display: block; }
   .menu button { display: block; width: 100%; text-align: left; background: none; border: none; color: var(--text);
     font-family: "Zen Kaku Gothic New", sans-serif; font-size: 13px; font-weight: 700; padding: 10px 12px; border-radius: 9px; cursor: pointer; }
-  .menu button:hover { background: rgba(255,255,255,.1); }
+  .menu button:hover { background: rgba(0,0,0,.05); }
   .menu-sep { height: 1px; background: var(--stroke); margin: 6px 6px; }
   .menu-acct { font-size: 11px; color: var(--text-soft); padding: 6px 12px; word-break: break-all; }
   .menu-acct:empty { display: none; }
@@ -128,7 +147,7 @@
     transition: transform .1s, border-color .2s, color .2s;
   }
   .tab:hover { transform: translateY(-1px); color: var(--text); }
-  .tab .cnt { background: rgba(255,255,255,.1); border-radius: 999px; padding: 1px 8px; font-size: 11px; }
+  .tab .cnt { background: rgba(0,0,0,.05); border-radius: 999px; padding: 1px 8px; font-size: 11px; }
   .tab.active { color: #fff; border-color: transparent; box-shadow: 0 6px 18px rgba(0,0,0,.35); }
 
   /* 並べ替え・絞り込みコントロール */
@@ -138,14 +157,14 @@
     background: var(--panel-2) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'><path d='M2 4.5l4 4 4-4' stroke='%239a9aa0' stroke-width='1.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>") no-repeat right 12px center;
     border-radius: 10px; padding: 9px 32px 9px 13px; font-family: "Zen Kaku Gothic New", sans-serif; font-size: 12.5px; font-weight: 700; cursor: pointer;
     transition: border-color .18s, background-color .18s; }
-  .ctrl select:hover { border-color: rgba(255,255,255,.17); }
+  .ctrl select:hover { border-color: rgba(70,55,30,.22); }
   .ctrl select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(211,162,76,.2); }
-  .ctrl select option { background: #26272c; color: var(--text); }
+  .ctrl select option { background: #ffffff; color: var(--text); }
 
   /* グループ見出し */
   .group-head { grid-column: 1 / -1; font-family: "Zen Kaku Gothic New", sans-serif; font-weight: 900; font-size: 15px; color: var(--text); margin: 16px 0 2px; display: flex; align-items: center; gap: 10px; }
   .group-head:first-child { margin-top: 0; }
-  .group-head .gcount { font-size: 11px; color: var(--text-soft); background: rgba(255,255,255,.08); border-radius: 999px; padding: 2px 9px; font-weight: 700; }
+  .group-head .gcount { font-size: 11px; color: var(--text-soft); background: rgba(0,0,0,.07); border-radius: 999px; padding: 2px 9px; font-weight: 700; }
   .group-head .gline { flex: 1; height: 1px; background: var(--stroke); }
 
   /* カード（コンパクト密集レイアウト） */
@@ -157,8 +176,8 @@
     transition: transform .14s ease, border-color .2s, background .2s;
   }
   .card::before { content:""; position:absolute; left:0; top:11px; bottom:11px; width:3px; border-radius:0 2px 2px 0; background:var(--catcolor); opacity:.85; }
-  .card:hover { border-color: rgba(255,255,255,.18); background: #26272c; }
-  .card.done { border-color: rgba(211,162,76,.32); background: #23211c; }
+  .card:hover { border-color: rgba(70,55,30,.2); background: #fffdf7; box-shadow: var(--sh-1); }
+  .card.done { border-color: rgba(226,162,51,.42); background: #fff7e5; }
 
   .card .head { display: flex; align-items: center; gap: 6px; margin-bottom: 5px; }
   .card .catchip { font-size: 9.5px; font-weight: 800; color: var(--catcolor); letter-spacing: .07em; text-transform: uppercase; display: inline-flex; align-items: center; gap: 5px; opacity: .92; }
@@ -166,7 +185,7 @@
   .card .text { font-size: 14px; line-height: 20px; margin: 0; word-break: break-word; font-weight: 500; cursor: pointer; }
   .card.done .text { color: var(--text-soft); }
 
-  .card .why { display: none; font-size: 12px; color: #b6b6bc; margin-top: 7px; padding-top: 7px; line-height: 18px; border-top: 1px dashed rgba(255,255,255,.12); }
+  .card .why { display: none; font-size: 12px; color: var(--text-soft); margin-top: 7px; padding-top: 7px; line-height: 18px; border-top: 1px dashed rgba(0,0,0,.1); }
   .card .why.show { display: block; }
   .card .why::before { content:"💭 "; }
 
@@ -177,17 +196,17 @@
   .card.done .check .box { background: var(--accent); border-color: var(--accent); color: #1a1408; }
   .card .spacer { margin-left: auto; }
   .iconbtn { border: none; background: transparent; color: var(--text-soft); cursor: pointer; font-size: 13px; font-family: inherit; opacity: .6; padding: 3px 5px; border-radius: 7px; line-height: 1; }
-  .iconbtn:hover { opacity: 1; background: rgba(255,255,255,.08); }
+  .iconbtn:hover { opacity: 1; background: rgba(0,0,0,.07); }
   .iconbtn.on { opacity: 1; color: var(--accent); background: rgba(211,162,76,.15); }
   .card .glowstar { position: absolute; right: 9px; top: 7px; font-size: 12px; opacity: .85; pointer-events: none; }
   .card.reorderable { cursor: grab; }
   .card.reorderable:active { cursor: grabbing; }
   .card.dragging { box-shadow: var(--sh-3); opacity: .98; }
-  .card-placeholder { border: 2px dashed rgba(255,255,255,.28); border-radius: 14px; background: rgba(255,255,255,.035); box-sizing: border-box; }
+  .card-placeholder { border: 2px dashed rgba(0,0,0,.22); border-radius: 12px; background: rgba(0,0,0,.03); box-sizing: border-box; }
   .reorder-hint { text-align: center; font-size: 11px; color: var(--text-soft); opacity: .65; margin: -10px 0 16px; min-height: 14px; letter-spacing: .02em; }
 
   .add-card {
-    border: 1.5px dashed var(--stroke); background: rgba(255,255,255,.02); border-radius: 12px;
+    border: 1.5px dashed var(--stroke); background: rgba(0,0,0,.012); border-radius: 12px;
     min-height: 62px; display: flex; align-items: center; justify-content: center; gap: 8px;
     color: var(--text-soft); font-weight: 700; font-size: 14px; cursor: pointer;
     font-family: "Zen Kaku Gothic New", sans-serif; transition: .2s;
@@ -198,30 +217,30 @@
   .modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.62); z-index: 50; align-items: center; justify-content: center; padding: 16px; }
   .modal-bg.open { display: flex; }
   .modal {
-    background: linear-gradient(180deg, #26272c, #1e1f23);
+    background: #ffffff;
     border: 1px solid var(--stroke); border-radius: 22px; padding: 24px; width: 100%; max-width: 450px;
-    box-shadow: 0 30px 80px rgba(0,0,0,.6);
+    box-shadow: var(--sh-3);
   }
   .modal h3 { font-family: "Zen Kaku Gothic New", sans-serif; font-weight: 900; margin: 0 0 18px; font-size: 22px; letter-spacing: .01em; }
   .field { margin-bottom: 16px; }
   .field label { display: block; font-size: 13px; font-weight: 700; margin-bottom: 7px; color: var(--text-soft); }
   .field input[type=text], .field input[type=password], .field textarea, .field select {
     width: 100%; border: 1px solid var(--stroke); border-radius: 12px; padding: 11px 13px;
-    font-family: inherit; font-size: 15px; background: rgba(255,255,255,.05); color: var(--text);
+    font-family: inherit; font-size: 15px; background: var(--panel-2); color: var(--text);
   }
   .field input::placeholder, .field textarea::placeholder { color: #6f74a3; }
   .field input:focus, .field textarea:focus, .field select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(211,162,76,.2); }
-  .field select option { background: #26272c; }
+  .field select option { background: #ffffff; }
   .field textarea { resize: vertical; min-height: 58px; }
   .seg { display: flex; gap: 7px; flex-wrap: wrap; }
-  .seg button { border: 1px solid var(--stroke); background: rgba(255,255,255,.04); border-radius: 999px; padding: 8px 14px; font-family: inherit; font-size: 13px; cursor: pointer; color: var(--text-soft); font-weight: 700; transition: .15s; }
+  .seg button { border: 1px solid var(--stroke); background: var(--panel-2); border-radius: 999px; padding: 8px 14px; font-family: inherit; font-size: 13px; cursor: pointer; color: var(--text-soft); font-weight: 700; transition: .15s; }
   .seg button.on { background: var(--grad); color: #10122c; border-color: transparent; }
   .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 8px; }
 
   /* ログイン画面 */
   #authScreen { display: none; position: fixed; inset: 0; z-index: 45; align-items: center; justify-content: center; padding: 16px; }
   #authScreen.open { display: flex; }
-  .auth-card { background: linear-gradient(180deg, #26272c, #1e1f23); border: 1px solid var(--stroke); border-radius: 24px; padding: 30px 26px; width: 100%; max-width: 392px; box-shadow: 0 30px 80px rgba(0,0,0,.6); text-align: center; }
+  .auth-card { background: #ffffff; border: 1px solid var(--stroke); border-radius: 24px; padding: 30px 26px; width: 100%; max-width: 392px; box-shadow: var(--sh-3); text-align: center; }
   .auth-card h2 { font-family: "Zen Kaku Gothic New", sans-serif; font-weight: 900; margin: 4px 0 0; font-size: 32px; letter-spacing: .01em; }
   .auth-card .num { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
   .auth-tabs { display: flex; gap: 8px; justify-content: center; margin: 20px 0 16px; }
@@ -240,7 +259,7 @@
   .imp-fname { font-size: 12px; color: var(--cyan); margin-left: 10px; }
   .imp-check { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-soft); margin: 2px 0 12px; cursor: pointer; }
   .imp-check input { width: 16px; height: 16px; accent-color: var(--violet); }
-  .imp-preview { font-size: 12px; color: var(--text-soft); background: rgba(255,255,255,.04); border: 1px solid var(--stroke); border-radius: 10px; padding: 10px 12px; min-height: 20px; line-height: 1.8; }
+  .imp-preview { font-size: 12px; color: var(--text-soft); background: var(--panel-2); border: 1px solid var(--stroke); border-radius: 10px; padding: 10px 12px; min-height: 20px; line-height: 1.8; }
 
   /* パスワード表示トグル */
   .pw-wrap { position: relative; }
@@ -260,12 +279,12 @@
   .rank-tabs .btn { flex: 1; }
   .rank-tabs .btn.on { background: var(--grad); color: #10122c; border: none; }
   .rank-body { max-height: 52vh; overflow-y: auto; }
-  .rank-row { display: flex; align-items: center; gap: 12px; padding: 10px 6px; border-bottom: 1px solid rgba(255,255,255,.08); }
+  .rank-row { display: flex; align-items: center; gap: 12px; padding: 10px 6px; border-bottom: 1px solid rgba(0,0,0,.07); }
   .rank-num { width: 30px; text-align: center; font-family: "Zen Kaku Gothic New", sans-serif; font-weight: 900; font-size: 17px; color: var(--gold); }
   .rank-name { flex: 1; font-weight: 700; word-break: break-word; }
   .rank-score { font-size: 12px; color: var(--text-soft); white-space: nowrap; }
   .rank-score b { color: var(--gold); font-size: 16px; }
-  .feed-row { padding: 10px 6px; border-bottom: 1px solid rgba(255,255,255,.08); font-size: 13px; line-height: 1.6; }
+  .feed-row { padding: 10px 6px; border-bottom: 1px solid rgba(0,0,0,.07); font-size: 13px; line-height: 1.6; }
   .feed-row .who { font-weight: 700; color: var(--cyan); }
   .feed-row .when { font-size: 11px; color: var(--text-soft); margin-left: 6px; }
   .rank-empty { text-align: center; color: var(--text-soft); padding: 34px 16px; font-size: 13px; line-height: 1.7; }
@@ -293,7 +312,7 @@
   <!-- ログイン画面 -->
   <div id="authScreen">
     <div class="auth-card">
-      <div class="kicker">DREAM LIST</div>
+      <div class="kicker">✦ DREAM LIST ✦</div>
       <h2>夢リスト<span class="num">100</span></h2>
       <p class="epigraph" style="margin:10px 0 0">“ 思考は現実化する ”</p>
       <p class="subtitle" id="authSub" style="margin:8px 0 0">ログインすると、自分の夢リストが表示されます</p>
@@ -314,7 +333,7 @@
 
   <div class="wrap">
     <header class="hero">
-      <div class="kicker">DREAM LIST</div>
+      <div class="kicker">✦ DREAM LIST ✦</div>
       <h1>夢リスト<span class="num">100</span></h1>
       <p class="epigraph">“ 思考は現実化する ”</p>
       <p class="subtitle">叶えるたびに、夜空に夢の星が灯っていく</p>
@@ -377,11 +396,11 @@
       </label>
       <label class="ctrl"><span>🎨 テーマ</span>
         <select id="themeSel" onchange="applyTheme(this.value)">
-          <option value="twilight">琥珀</option>
-          <option value="aurora">若葉</option>
-          <option value="sunset">夕土</option>
-          <option value="sakura">薄紅</option>
-          <option value="ocean">藍</option>
+          <option value="twilight">朝日</option>
+          <option value="aurora">新緑</option>
+          <option value="sunset">夕焼け</option>
+          <option value="sakura">桜</option>
+          <option value="ocean">青空</option>
         </select>
       </label>
     </div>
@@ -1301,18 +1320,23 @@ function refreshAcct(){
 
 /* ---------- テーマ切替 ---------- */
 const THEMES = {
-  twilight: { accent:"#d3a24c", bg0:"#16171a", bg1:"#1b1c20" },   // 琥珀
-  aurora:   { accent:"#8faa86", bg0:"#151714", bg1:"#1a1c18" },   // 若葉
-  sunset:   { accent:"#cf8f70", bg0:"#191513", bg1:"#1d1917" },   // 夕土
-  sakura:   { accent:"#bd8ab4", bg0:"#181518", bg1:"#1c191c" },   // 薄紅
-  ocean:    { accent:"#7f9bc0", bg0:"#15171a", bg1:"#191c20" },   // 藍
+  twilight: { accent:"#e2a233", accent2:"#c8862a",
+    sky:"radial-gradient(1200px 700px at 50% 122%, #ffd98f 0%, rgba(255,217,143,0) 62%), linear-gradient(180deg,#cfe6f6 0%,#eaf0ec 32%,#fbf3e3 70%,#ffedd4 100%)" },   // 朝日
+  aurora:   { accent:"#5aa06e", accent2:"#478a5a",
+    sky:"radial-gradient(1200px 700px at 50% 122%, #cdeab6 0%, rgba(205,234,182,0) 62%), linear-gradient(180deg,#d3e7f0 0%,#e4efe6 34%,#f2f6e6 72%,#e9f3d8 100%)" },   // 新緑
+  sunset:   { accent:"#e07a4e", accent2:"#c4623a",
+    sky:"radial-gradient(1200px 700px at 50% 122%, #ffc39a 0%, rgba(255,195,154,0) 62%), linear-gradient(180deg,#f6d7c6 0%,#f7e0d0 34%,#fdeede 72%,#ffddc4 100%)" },   // 夕焼け
+  sakura:   { accent:"#d97aa0", accent2:"#bd5f86",
+    sky:"radial-gradient(1200px 700px at 50% 122%, #ffd3e2 0%, rgba(255,211,226,0) 62%), linear-gradient(180deg,#f3dced 0%,#f7e6ee 34%,#fdeef2 72%,#ffdfe9 100%)" },   // 桜
+  ocean:    { accent:"#4f8fc0", accent2:"#3d76a6",
+    sky:"radial-gradient(1200px 700px at 50% 122%, #bfe2f2 0%, rgba(191,226,242,0) 62%), linear-gradient(180deg,#cbe4f4 0%,#dcecf3 34%,#eef5f8 72%,#d7ecf5 100%)" },   // 青空
 };
 function applyTheme(key){
   const t = THEMES[key] || THEMES.twilight;
   const r = document.documentElement.style;
-  r.setProperty("--bg-0", t.bg0); r.setProperty("--bg-1", t.bg1);
-  r.setProperty("--accent", t.accent); r.setProperty("--grad", t.accent); r.setProperty("--gold", t.accent);
-  const sky = document.querySelector(".sky"); if(sky) sky.style.background = t.bg0;
+  r.setProperty("--accent", t.accent); r.setProperty("--accent-2", t.accent2);
+  r.setProperty("--grad", t.accent); r.setProperty("--gold", t.accent);
+  const sky = document.querySelector(".sky"); if(sky) sky.style.background = t.sky;
   themeKey = key; localStorage.setItem("yumeTheme", key);
   const sel = document.getElementById("themeSel"); if(sel) sel.value = key;
 }
@@ -1350,10 +1374,10 @@ function shootingStar(){
     ctx.clearRect(0,0,cv.width,cv.height);
     const tx=x-vx*11, ty=y-vy*11;
     const g=ctx.createLinearGradient(x,y,tx,ty);
-    g.addColorStop(0,"rgba(255,255,255,.95)"); g.addColorStop(.35,"rgba(190,205,255,.5)"); g.addColorStop(1,"rgba(190,205,255,0)");
+    g.addColorStop(0,"rgba(255,206,110,.98)"); g.addColorStop(.35,"rgba(240,180,80,.5)"); g.addColorStop(1,"rgba(240,180,80,0)");
     ctx.strokeStyle=g; ctx.lineWidth=3; ctx.lineCap="round";
     ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(tx,ty); ctx.stroke();
-    ctx.beginPath(); ctx.fillStyle="#fff"; ctx.shadowColor="#cfe0ff"; ctx.shadowBlur=16; ctx.arc(x,y,2.6,0,7); ctx.fill(); ctx.shadowBlur=0;
+    ctx.beginPath(); ctx.fillStyle="#fff6df"; ctx.shadowColor="#ffcf7a"; ctx.shadowBlur=16; ctx.arc(x,y,2.6,0,7); ctx.fill(); ctx.shadowBlur=0;
     x+=vx; y+=vy; t++;
     if(t<75 && y<cv.height+50) requestAnimationFrame(anim); else ctx.clearRect(0,0,cv.width,cv.height);
   })();
