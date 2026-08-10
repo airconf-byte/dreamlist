@@ -19,22 +19,24 @@
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
   :root {
-    --bg-0: #2a2e64;
-    --bg-1: #3a3f86;
-    --panel: rgba(255,255,255,.09);
-    --panel-2: rgba(255,255,255,.14);
-    --stroke: rgba(255,255,255,.15);
-    --text: #f5f6ff;
-    --text-soft: #b3b8e0;
-    --cyan: #6fe3d6;
-    --violet: #9a8bff;
-    --pink: #e58cff;
-    --gold: #f2c877;
-    --grad: linear-gradient(120deg, #6fe3d6, #8f8bff 52%, #e58cff);
-    --glow: 0 10px 34px rgba(130, 110, 255, .4);
-    --sh-1: 0 2px 10px rgba(8,10,32,.28);
-    --sh-2: 0 12px 34px rgba(8,10,32,.4);
-    --sh-3: 0 28px 66px rgba(6,8,26,.55);
+    --bg-0: #16171a;
+    --bg-1: #1b1c20;
+    --panel: #212227;
+    --panel-2: #292a30;
+    --stroke: rgba(255,255,255,.09);
+    --text: #ededef;
+    --text-soft: #9a9aa0;
+    --cyan: #cbbb92;
+    --violet: #d3a24c;
+    --pink: #e08a76;
+    --gold: #d3a24c;
+    --accent: #d3a24c;
+    --accent-2: #b98a3b;
+    --grad: #d3a24c;
+    --glow: none;
+    --sh-1: 0 1px 2px rgba(0,0,0,.35);
+    --sh-2: 0 6px 18px rgba(0,0,0,.38);
+    --sh-3: 0 16px 40px rgba(0,0,0,.5);
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; }
@@ -48,27 +50,9 @@
   }
   .sky {
     position: fixed; inset: 0; z-index: -2;
-    background:
-      radial-gradient(1200px 720px at 78% -6%, #6a5bd6 0%, transparent 56%),
-      radial-gradient(1000px 820px at 10% 108%, #2f86b4 0%, transparent 54%),
-      radial-gradient(900px 640px at 92% 102%, #c465ac 0%, transparent 48%),
-      linear-gradient(180deg, #454aa0, #2f3470 78%);
+    background: var(--bg-0);
   }
-  .stars {
-    position: fixed; inset: 0; z-index: -1; pointer-events: none;
-    background-image:
-      radial-gradient(1.5px 1.5px at 20% 30%, #fff, transparent),
-      radial-gradient(1.5px 1.5px at 70% 20%, #cfe6ff, transparent),
-      radial-gradient(1px 1px at 40% 70%, #fff, transparent),
-      radial-gradient(1.5px 1.5px at 85% 60%, #ffe9c7, transparent),
-      radial-gradient(1px 1px at 55% 45%, #fff, transparent),
-      radial-gradient(1px 1px at 10% 80%, #cfe6ff, transparent),
-      radial-gradient(1.5px 1.5px at 90% 90%, #fff, transparent),
-      radial-gradient(1px 1px at 30% 15%, #fff, transparent);
-    opacity: .5;
-    animation: twinkle 5s ease-in-out infinite alternate;
-  }
-  @keyframes twinkle { from { opacity:.35 } to { opacity:.65 } }
+  .stars { display: none; }
 
   #shareBanner {
     display: none;
@@ -86,55 +70,47 @@
   .wrap { max-width: 1000px; margin: 0 auto; padding: 26px 18px 90px; }
 
   header.hero { text-align: center; padding: 14px 0 6px; }
-  .kicker { letter-spacing: .5em; font-size: 10px; color: var(--text-soft); font-weight: 700; text-transform: uppercase; margin-bottom: 15px; opacity: .75; }
+  .kicker { letter-spacing: .34em; font-size: 10px; color: var(--text-soft); font-weight: 700; text-transform: uppercase; margin-bottom: 16px; opacity: .7; }
   h1 {
     font-family: "Zen Kaku Gothic New", sans-serif; font-weight: 900;
-    margin: 0; font-size: 50px; letter-spacing: 0; line-height: 1.05;
+    margin: 0; font-size: 46px; letter-spacing: .01em; line-height: 1.06;
   }
-  h1 .num {
-    background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent;
-    filter: drop-shadow(0 2px 18px rgba(143,139,255,.45)); padding: 0 .04em;
-  }
-  .subtitle { color: var(--text-soft); margin: 16px 0 0; font-size: 13px; letter-spacing: .05em; }
-  .epigraph { font-family: "Zen Kaku Gothic New", sans-serif; font-weight: 700; margin: 14px 0 0; font-size: 12.5px; letter-spacing: .3em; padding-left: .3em;
-    background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent;
-    filter: drop-shadow(0 1px 10px rgba(143,139,255,.3)); }
+  h1 .num { color: var(--accent); padding: 0 .04em; }
+  .subtitle { color: var(--text-soft); margin: 15px 0 0; font-size: 13px; letter-spacing: .04em; }
+  .epigraph { font-family: "Zen Kaku Gothic New", sans-serif; font-weight: 700; margin: 14px 0 0; font-size: 11.5px; letter-spacing: .3em; padding-left: .3em; color: var(--accent); }
 
   .meter {
-    margin: 28px auto 0; max-width: 640px;
-    background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1);
-    border-radius: 18px; padding: 20px 24px; backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
-    box-shadow: var(--sh-2);
+    margin: 26px auto 0; max-width: 620px;
+    background: var(--panel); border: 1px solid var(--stroke);
+    border-radius: 14px; padding: 20px 24px; box-shadow: var(--sh-1);
   }
   .meter-top { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
-  .meter-count { font-family: "Zen Kaku Gothic New", sans-serif; font-size: 16px; font-weight: 700; color: var(--text-soft); }
-  .meter-count b { font-size: 40px; color: var(--gold); font-weight: 900; filter: drop-shadow(0 0 14px rgba(255,211,107,.5)); }
-  .meter-msg { color: var(--cyan); font-size: 13px; font-weight: 700; text-align: right; }
-  .bar { height: 12px; background: rgba(255,255,255,.08); border-radius: 999px; margin-top: 12px; overflow: hidden; }
-  .bar > i { display: block; height: 100%; width: 0; background: var(--grad); border-radius: 999px;
-    box-shadow: 0 0 16px rgba(154,123,255,.7); transition: width .7s cubic-bezier(.2,.9,.2,1); }
-  .stamps { margin-top: 10px; font-size: 16px; letter-spacing: 3px; min-height: 22px; }
+  .meter-count { font-family: "Zen Kaku Gothic New", sans-serif; font-size: 15px; font-weight: 700; color: var(--text-soft); }
+  .meter-count b { font-size: 38px; color: var(--accent); font-weight: 900; }
+  .meter-msg { color: var(--text-soft); font-size: 13px; font-weight: 700; text-align: right; }
+  .bar { height: 8px; background: rgba(255,255,255,.07); border-radius: 999px; margin-top: 14px; overflow: hidden; }
+  .bar > i { display: block; height: 100%; width: 0; background: var(--accent); border-radius: 999px;
+    transition: width .7s cubic-bezier(.2,.9,.2,1); }
+  .stamps { margin-top: 10px; font-size: 15px; letter-spacing: 3px; min-height: 22px; opacity: .9; }
 
   .toolbar { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; align-items: center; margin: 24px 0 6px; }
   .btn {
-    border: 1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.05); color: var(--text);
-    border-radius: 12px; padding: 10px 18px; font-family: "Zen Kaku Gothic New", sans-serif; font-size: 13.5px;
+    border: 1px solid var(--stroke); background: var(--panel-2); color: var(--text);
+    border-radius: 10px; padding: 10px 17px; font-family: "Zen Kaku Gothic New", sans-serif; font-size: 13px;
     font-weight: 700; letter-spacing: .02em; cursor: pointer;
-    transition: background .2s, border-color .2s, box-shadow .2s, transform .08s;
-    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    transition: background .18s, border-color .18s, transform .06s;
   }
-  .btn:hover { background: rgba(255,255,255,.1); border-color: rgba(255,255,255,.3); }
+  .btn:hover { background: #31333b; border-color: rgba(255,255,255,.17); }
   .btn:active { transform: translateY(1px); }
-  .btn.primary { background: var(--grad); color: #191540; border: 1px solid transparent; font-weight: 800;
-    box-shadow: 0 8px 22px rgba(130,110,255,.36), inset 0 1px 0 rgba(255,255,255,.45); }
-  .btn.primary:hover { filter: brightness(1.06); box-shadow: 0 12px 30px rgba(130,110,255,.5), inset 0 1px 0 rgba(255,255,255,.55); }
-  .btn.icon-btn { padding: 10px 13px; font-size: 15px; line-height: 1; }
+  .btn.primary { background: var(--accent); color: #1a1408; border: 1px solid transparent; font-weight: 800; }
+  .btn.primary:hover { background: #e0ad57; }
+  .btn.icon-btn { padding: 10px 12px; font-size: 15px; line-height: 1; }
   .acct { font-size: 12px; color: var(--text-soft); }
 
   /* メニュー（ドロップダウン） */
   .menu-wrap { position: relative; display: inline-block; }
   .menu { position: absolute; right: 0; top: calc(100% + 8px); z-index: 32; min-width: 232px;
-    background: linear-gradient(180deg, #353a80, #2b3068); border: 1px solid var(--stroke); border-radius: 14px;
+    background: linear-gradient(180deg, #26272c, #1e1f23); border: 1px solid var(--stroke); border-radius: 14px;
     box-shadow: 0 22px 54px rgba(0,0,0,.5); padding: 6px; display: none; }
   .menu.open { display: block; }
   .menu button { display: block; width: 100%; text-align: left; background: none; border: none; color: var(--text);
@@ -158,13 +134,13 @@
   /* 並べ替え・絞り込みコントロール */
   .controls { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; margin: 0 0 22px; }
   .ctrl { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--text-soft); font-weight: 700; letter-spacing: .04em; }
-  .ctrl select { appearance: none; -webkit-appearance: none; border: 1px solid rgba(255,255,255,.14); color: var(--text);
-    background: rgba(255,255,255,.05) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'><path d='M2 4.5l4 4 4-4' stroke='%23b3b8e0' stroke-width='1.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>") no-repeat right 12px center;
-    border-radius: 11px; padding: 9px 32px 9px 14px; font-family: "Zen Kaku Gothic New", sans-serif; font-size: 12.5px; font-weight: 700; cursor: pointer;
-    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); transition: border-color .2s, background-color .2s; }
-  .ctrl select:hover { border-color: rgba(255,255,255,.3); }
-  .ctrl select:focus { outline: none; border-color: var(--violet); box-shadow: 0 0 0 3px rgba(154,123,255,.22); }
-  .ctrl select option { background: #353a80; color: var(--text); }
+  .ctrl select { appearance: none; -webkit-appearance: none; border: 1px solid var(--stroke); color: var(--text);
+    background: var(--panel-2) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'><path d='M2 4.5l4 4 4-4' stroke='%239a9aa0' stroke-width='1.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>") no-repeat right 12px center;
+    border-radius: 10px; padding: 9px 32px 9px 13px; font-family: "Zen Kaku Gothic New", sans-serif; font-size: 12.5px; font-weight: 700; cursor: pointer;
+    transition: border-color .18s, background-color .18s; }
+  .ctrl select:hover { border-color: rgba(255,255,255,.17); }
+  .ctrl select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(211,162,76,.2); }
+  .ctrl select option { background: #26272c; color: var(--text); }
 
   /* グループ見出し */
   .group-head { grid-column: 1 / -1; font-family: "Zen Kaku Gothic New", sans-serif; font-weight: 900; font-size: 15px; color: var(--text); margin: 16px 0 2px; display: flex; align-items: center; gap: 10px; }
@@ -175,36 +151,35 @@
   /* カード（コンパクト密集レイアウト） */
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
   .card {
-    background: rgba(255,255,255,.055); border: 1px solid rgba(255,255,255,.1);
-    border-radius: 14px; padding: 11px 14px 11px 16px; position: relative;
-    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
-    display: flex; flex-direction: column; overflow: hidden; box-shadow: var(--sh-1);
-    transition: transform .16s cubic-bezier(.2,.8,.2,1), border-color .25s, box-shadow .25s, background .25s;
+    background: var(--panel); border: 1px solid var(--stroke);
+    border-radius: 12px; padding: 11px 14px 11px 16px; position: relative;
+    display: flex; flex-direction: column; overflow: hidden;
+    transition: transform .14s ease, border-color .2s, background .2s;
   }
-  .card::before { content:""; position:absolute; left:0; top:12px; bottom:12px; width:3px; border-radius:0 3px 3px 0; background:var(--catcolor); }
-  .card:hover { transform: translateY(-3px); border-color: rgba(255,255,255,.24); background: rgba(255,255,255,.085); box-shadow: var(--sh-2); }
-  .card.done { border-color: rgba(242,200,119,.4); background: rgba(242,200,119,.05); box-shadow: 0 0 0 1px rgba(242,200,119,.18), 0 8px 24px rgba(242,200,119,.12); }
+  .card::before { content:""; position:absolute; left:0; top:11px; bottom:11px; width:3px; border-radius:0 2px 2px 0; background:var(--catcolor); opacity:.85; }
+  .card:hover { border-color: rgba(255,255,255,.18); background: #26272c; }
+  .card.done { border-color: rgba(211,162,76,.32); background: #23211c; }
 
   .card .head { display: flex; align-items: center; gap: 6px; margin-bottom: 5px; }
-  .card .catchip { font-size: 9.5px; font-weight: 800; color: var(--catcolor); letter-spacing: .07em; text-transform: uppercase; display: inline-flex; align-items: center; gap: 5px; }
+  .card .catchip { font-size: 9.5px; font-weight: 800; color: var(--catcolor); letter-spacing: .07em; text-transform: uppercase; display: inline-flex; align-items: center; gap: 5px; opacity: .92; }
   .card .dead { margin-left: auto; font-size: 10.5px; color: var(--text-soft); white-space: nowrap; }
   .card .text { font-size: 14px; line-height: 20px; margin: 0; word-break: break-word; font-weight: 500; cursor: pointer; }
   .card.done .text { color: var(--text-soft); }
 
-  .card .why { display: none; font-size: 12px; color: #c6caf2; margin-top: 7px; padding-top: 7px; line-height: 18px; border-top: 1px dashed rgba(255,255,255,.14); }
+  .card .why { display: none; font-size: 12px; color: #b6b6bc; margin-top: 7px; padding-top: 7px; line-height: 18px; border-top: 1px dashed rgba(255,255,255,.12); }
   .card .why.show { display: block; }
   .card .why::before { content:"💭 "; }
 
   .card .row { display: flex; align-items: center; gap: 4px; margin-top: 8px; }
   .check { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; font-size: 12px; font-weight: 700; user-select: none; color: var(--text-soft); }
   .check .box { width: 18px; height: 18px; border: 2px solid var(--stroke); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; transition: .2s; }
-  .card.done .check { color: var(--gold); }
-  .card.done .check .box { background: var(--gold); border-color: var(--gold); color: #10122c; box-shadow: 0 0 12px rgba(255,211,107,.7); }
+  .card.done .check { color: var(--accent); }
+  .card.done .check .box { background: var(--accent); border-color: var(--accent); color: #1a1408; }
   .card .spacer { margin-left: auto; }
   .iconbtn { border: none; background: transparent; color: var(--text-soft); cursor: pointer; font-size: 13px; font-family: inherit; opacity: .6; padding: 3px 5px; border-radius: 7px; line-height: 1; }
   .iconbtn:hover { opacity: 1; background: rgba(255,255,255,.08); }
-  .iconbtn.on { opacity: 1; color: var(--violet); background: rgba(154,123,255,.16); }
-  .card .glowstar { position: absolute; right: 8px; top: 6px; font-size: 15px; filter: drop-shadow(0 0 8px rgba(255,211,107,.9)); pointer-events: none; }
+  .iconbtn.on { opacity: 1; color: var(--accent); background: rgba(211,162,76,.15); }
+  .card .glowstar { position: absolute; right: 9px; top: 7px; font-size: 12px; opacity: .85; pointer-events: none; }
   .card.reorderable { cursor: grab; }
   .card.reorderable:active { cursor: grabbing; }
   .card.dragging { box-shadow: var(--sh-3); opacity: .98; }
@@ -217,13 +192,13 @@
     color: var(--text-soft); font-weight: 700; font-size: 14px; cursor: pointer;
     font-family: "Zen Kaku Gothic New", sans-serif; transition: .2s;
   }
-  .add-card:hover { background: rgba(154,123,255,.1); color: #fff; border-color: var(--violet); }
+  .add-card:hover { background: rgba(211,162,76,.08); color: var(--text); border-color: var(--accent); }
 
   /* モーダル */
-  .modal-bg { display: none; position: fixed; inset: 0; background: rgba(6,7,20,.72); backdrop-filter: blur(4px); z-index: 50; align-items: center; justify-content: center; padding: 16px; }
+  .modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.62); z-index: 50; align-items: center; justify-content: center; padding: 16px; }
   .modal-bg.open { display: flex; }
   .modal {
-    background: linear-gradient(180deg, #353a80, #2b3068);
+    background: linear-gradient(180deg, #26272c, #1e1f23);
     border: 1px solid var(--stroke); border-radius: 22px; padding: 24px; width: 100%; max-width: 450px;
     box-shadow: 0 30px 80px rgba(0,0,0,.6);
   }
@@ -235,8 +210,8 @@
     font-family: inherit; font-size: 15px; background: rgba(255,255,255,.05); color: var(--text);
   }
   .field input::placeholder, .field textarea::placeholder { color: #6f74a3; }
-  .field input:focus, .field textarea:focus, .field select:focus { outline: none; border-color: var(--violet); box-shadow: 0 0 0 3px rgba(154,123,255,.25); }
-  .field select option { background: #353a80; }
+  .field input:focus, .field textarea:focus, .field select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(211,162,76,.2); }
+  .field select option { background: #26272c; }
   .field textarea { resize: vertical; min-height: 58px; }
   .seg { display: flex; gap: 7px; flex-wrap: wrap; }
   .seg button { border: 1px solid var(--stroke); background: rgba(255,255,255,.04); border-radius: 999px; padding: 8px 14px; font-family: inherit; font-size: 13px; cursor: pointer; color: var(--text-soft); font-weight: 700; transition: .15s; }
@@ -246,7 +221,7 @@
   /* ログイン画面 */
   #authScreen { display: none; position: fixed; inset: 0; z-index: 45; align-items: center; justify-content: center; padding: 16px; }
   #authScreen.open { display: flex; }
-  .auth-card { background: linear-gradient(180deg, #353a80, #2b3068); border: 1px solid var(--stroke); border-radius: 24px; padding: 30px 26px; width: 100%; max-width: 392px; box-shadow: 0 30px 80px rgba(0,0,0,.6); text-align: center; }
+  .auth-card { background: linear-gradient(180deg, #26272c, #1e1f23); border: 1px solid var(--stroke); border-radius: 24px; padding: 30px 26px; width: 100%; max-width: 392px; box-shadow: 0 30px 80px rgba(0,0,0,.6); text-align: center; }
   .auth-card h2 { font-family: "Zen Kaku Gothic New", sans-serif; font-weight: 900; margin: 4px 0 0; font-size: 32px; letter-spacing: .01em; }
   .auth-card .num { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
   .auth-tabs { display: flex; gap: 8px; justify-content: center; margin: 20px 0 16px; }
@@ -318,7 +293,7 @@
   <!-- ログイン画面 -->
   <div id="authScreen">
     <div class="auth-card">
-      <div class="kicker">★ Dream Constellation ★</div>
+      <div class="kicker">DREAM LIST</div>
       <h2>夢リスト<span class="num">100</span></h2>
       <p class="epigraph" style="margin:10px 0 0">“ 思考は現実化する ”</p>
       <p class="subtitle" id="authSub" style="margin:8px 0 0">ログインすると、自分の夢リストが表示されます</p>
@@ -339,7 +314,7 @@
 
   <div class="wrap">
     <header class="hero">
-      <div class="kicker">★ Dream Constellation ★</div>
+      <div class="kicker">DREAM LIST</div>
       <h1>夢リスト<span class="num">100</span></h1>
       <p class="epigraph">“ 思考は現実化する ”</p>
       <p class="subtitle">叶えるたびに、夜空に夢の星が灯っていく</p>
@@ -402,11 +377,11 @@
       </label>
       <label class="ctrl"><span>🎨 テーマ</span>
         <select id="themeSel" onchange="applyTheme(this.value)">
-          <option value="twilight">宵の空</option>
-          <option value="aurora">オーロラ</option>
-          <option value="sunset">夕焼け</option>
-          <option value="sakura">夜桜</option>
-          <option value="ocean">深海</option>
+          <option value="twilight">琥珀</option>
+          <option value="aurora">若葉</option>
+          <option value="sunset">夕土</option>
+          <option value="sakura">薄紅</option>
+          <option value="ocean">藍</option>
         </select>
       </label>
     </div>
@@ -518,16 +493,16 @@ let sb = null;
 if (CLOUD) { try { sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY); } catch(e){ console.error("Supabase初期化に失敗", e); } }
 
 const CATEGORIES = [
-  { key: "work",   label: "仕事・事業",   emoji: "💼", color: "#4fe3d0" },
-  { key: "money",  label: "お金",         emoji: "💰", color: "#ffd36b" },
-  { key: "life",   label: "暮らし・家",   emoji: "🏠", color: "#ff9d6b" },
-  { key: "health", label: "健康・体",     emoji: "🧍", color: "#6be39a" },
-  { key: "family", label: "家族・人",     emoji: "👨‍👩‍👧", color: "#ff77c8" },
-  { key: "travel", label: "旅行・体験",   emoji: "✈️", color: "#63b8ff" },
-  { key: "learn",  label: "学び・スキル", emoji: "🎯", color: "#9a7bff" },
-  { key: "give",   label: "誰かのため",   emoji: "🎁", color: "#ff6b8e" },
-  { key: "fun",    label: "趣味・遊び",   emoji: "🎮", color: "#7be0d8" },
-  { key: "self",   label: "なりたい自分", emoji: "🌟", color: "#c9a3ff" },
+  { key: "work",   label: "仕事・事業",   emoji: "💼", color: "#7fb0a6" },
+  { key: "money",  label: "お金",         emoji: "💰", color: "#cca85c" },
+  { key: "life",   label: "暮らし・家",   emoji: "🏠", color: "#cf9370" },
+  { key: "health", label: "健康・体",     emoji: "🧍", color: "#86b384" },
+  { key: "family", label: "家族・人",     emoji: "👨‍👩‍👧", color: "#c58aa6" },
+  { key: "travel", label: "旅行・体験",   emoji: "✈️", color: "#7c9dc4" },
+  { key: "learn",  label: "学び・スキル", emoji: "🎯", color: "#9a8fc4" },
+  { key: "give",   label: "誰かのため",   emoji: "🎁", color: "#c67e88" },
+  { key: "fun",    label: "趣味・遊び",   emoji: "🎮", color: "#7bb1ac" },
+  { key: "self",   label: "なりたい自分", emoji: "🌟", color: "#b09ec9" },
 ];
 const DEADLINES = ["1年以内", "3年以内", "10年以内", "いつか"];
 const DEAD_RANK = { "1年以内":0, "3年以内":1, "10年以内":2, "いつか":3 };
@@ -1326,22 +1301,18 @@ function refreshAcct(){
 
 /* ---------- テーマ切替 ---------- */
 const THEMES = {
-  twilight: { grad:"linear-gradient(120deg,#4fe3d0,#9a7bff 55%,#ff77c8)", bg0:"#2a2e64", bg1:"#3a3f86",
-    sky:"radial-gradient(1200px 720px at 78% -6%, #6a5bd6 0%, transparent 56%), radial-gradient(1000px 820px at 10% 108%, #2f86b4 0%, transparent 54%), radial-gradient(900px 640px at 92% 102%, #c465ac 0%, transparent 48%), linear-gradient(180deg,#454aa0,#2f3470 78%)" },
-  aurora:   { grad:"linear-gradient(120deg,#5ef0b0,#4fd0e3 50%,#8a7bff)", bg0:"#123a3f", bg1:"#1e5a5c",
-    sky:"radial-gradient(1200px 720px at 75% -8%, #2fae8f 0%, transparent 55%), radial-gradient(1000px 820px at 12% 108%, #2f7fb4 0%, transparent 55%), radial-gradient(900px 640px at 95% 100%, #6a5bd6 0%, transparent 48%), linear-gradient(180deg,#22615e,#153f45 80%)" },
-  sunset:   { grad:"linear-gradient(120deg,#ffd36b,#ff8f6b 50%,#ff6bcf)", bg0:"#4a2a55", bg1:"#6e3a5e",
-    sky:"radial-gradient(1200px 720px at 80% -6%, #ff9a5b 0%, transparent 52%), radial-gradient(1000px 820px at 10% 108%, #b6579a 0%, transparent 54%), radial-gradient(900px 640px at 60% 110%, #ffcf6b 0%, transparent 42%), linear-gradient(180deg,#5a3a70,#3a2450 80%)" },
-  sakura:   { grad:"linear-gradient(120deg,#ffb3d9,#c9a3ff 55%,#ffd36b)", bg0:"#3a2e52", bg1:"#52406e",
-    sky:"radial-gradient(1200px 720px at 78% -6%, #b57bd6 0%, transparent 55%), radial-gradient(1000px 820px at 10% 108%, #d66a9a 0%, transparent 52%), radial-gradient(900px 640px at 92% 102%, #ff9ac4 0%, transparent 46%), linear-gradient(180deg,#5a4680,#382c52 80%)" },
-  ocean:    { grad:"linear-gradient(120deg,#4fe3d0,#4fa3e3 55%,#7b8bff)", bg0:"#12324f", bg1:"#1c4d72",
-    sky:"radial-gradient(1200px 720px at 78% -6%, #2f7fb4 0%, transparent 56%), radial-gradient(1000px 820px at 10% 108%, #2fb0c9 0%, transparent 54%), radial-gradient(900px 640px at 92% 102%, #5a7bd6 0%, transparent 48%), linear-gradient(180deg,#1c4d72,#123049 80%)" },
+  twilight: { accent:"#d3a24c", bg0:"#16171a", bg1:"#1b1c20" },   // 琥珀
+  aurora:   { accent:"#8faa86", bg0:"#151714", bg1:"#1a1c18" },   // 若葉
+  sunset:   { accent:"#cf8f70", bg0:"#191513", bg1:"#1d1917" },   // 夕土
+  sakura:   { accent:"#bd8ab4", bg0:"#181518", bg1:"#1c191c" },   // 薄紅
+  ocean:    { accent:"#7f9bc0", bg0:"#15171a", bg1:"#191c20" },   // 藍
 };
 function applyTheme(key){
   const t = THEMES[key] || THEMES.twilight;
   const r = document.documentElement.style;
-  r.setProperty("--bg-0", t.bg0); r.setProperty("--bg-1", t.bg1); r.setProperty("--grad", t.grad);
-  const sky = document.querySelector(".sky"); if(sky) sky.style.background = t.sky;
+  r.setProperty("--bg-0", t.bg0); r.setProperty("--bg-1", t.bg1);
+  r.setProperty("--accent", t.accent); r.setProperty("--grad", t.accent); r.setProperty("--gold", t.accent);
+  const sky = document.querySelector(".sky"); if(sky) sky.style.background = t.bg0;
   themeKey = key; localStorage.setItem("yumeTheme", key);
   const sel = document.getElementById("themeSel"); if(sel) sel.value = key;
 }
@@ -1396,7 +1367,7 @@ function burstConfetti(){
   const cv = document.getElementById("confetti");
   const ctx = cv.getContext("2d");
   cv.width = innerWidth; cv.height = innerHeight;
-  const colors = ["#4fe3d0","#9a7bff","#ff77c8","#ffd36b","#ffffff"];
+  const colors = ["#d3a24c","#c9a96a","#b98a3b","#e0d3b0","#cfcfcf"];
   const parts = Array.from({length:100}, ()=>({
     x: innerWidth/2, y: innerHeight/3,
     vx: (Math.random()-.5)*13, vy: (Math.random()-1)*13 - 3,
