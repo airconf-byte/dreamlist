@@ -294,11 +294,18 @@
   .board-photo { position: absolute; width: 100px; border: 4px solid #fff; border-radius: 3px;
     box-shadow: 0 6px 16px rgba(90,65,30,.28); transform: rotate(var(--rot,0deg)); object-fit: cover;
     aspect-ratio: 1 / 1; background: #fff; }
-  .photo-grid { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0 4px; max-height: 46vh; overflow-y: auto; }
-  .photo-thumb { position: relative; width: 74px; height: 74px; border-radius: 8px; overflow: hidden; border: 1px solid var(--stroke); }
-  .photo-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
-  .photo-thumb button { position: absolute; top: 3px; right: 3px; width: 20px; height: 20px; border: none; border-radius: 50%; background: rgba(0,0,0,.6); color: #fff; cursor: pointer; font-size: 12px; line-height: 1; display: flex; align-items: center; justify-content: center; }
-  .photo-empty { color: var(--text-soft); font-size: 13px; padding: 16px 4px; }
+  .photo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(94px, 1fr)); gap: 8px; margin: 12px 0 4px; max-height: 52vh; overflow-y: auto; padding: 2px; }
+  .photo-thumb { position: relative; aspect-ratio: 1 / 1; border-radius: 8px; overflow: hidden; border: 1px solid var(--stroke); }
+  .photo-thumb.big { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .photo-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; cursor: zoom-in; }
+  .photo-thumb button { position: absolute; width: 22px; height: 22px; border: none; border-radius: 50%; cursor: pointer; font-size: 12px; line-height: 1; display: flex; align-items: center; justify-content: center; }
+  .pt-del { top: 3px; right: 3px; background: rgba(0,0,0,.6); color: #fff; }
+  .pt-star { top: 3px; left: 3px; background: rgba(0,0,0,.5); color: var(--gold); font-size: 13px; }
+  .photo-thumb.big .pt-star { background: var(--accent); color: #3a2c0c; }
+  .photo-empty { grid-column: 1 / -1; color: var(--text-soft); font-size: 13px; padding: 16px 4px; }
+  #lightbox { display: none; position: fixed; inset: 0; background: rgba(24,18,6,.84); z-index: 80; align-items: center; justify-content: center; padding: 20px; cursor: zoom-out; }
+  #lightbox.open { display: flex; }
+  #lightbox img { max-width: 94vw; max-height: 90vh; border-radius: 8px; border: 5px solid #fff; box-shadow: 0 24px 60px rgba(0,0,0,.55); }
 
   .empty-note { text-align: center; color: var(--text-soft); padding: 40px; font-size: 14px; }
   footer { text-align: center; color: var(--text-soft); font-size: 12px; margin-top: 46px; opacity: .7; }
@@ -515,12 +522,15 @@
       <p class="imp-note">叶えたい景色や、なりたい自分の写真を貼りましょう。追加した写真は、夢リストの余白にランダムに散らばって表示されます。</p>
       <label class="btn primary" style="cursor:pointer">＋ 写真を追加<input type="file" id="photoFile" accept="image/*" multiple style="display:none" onchange="onPhotoFiles(event)"></label>
       <span class="imp-fname" id="photoStatus"></span>
+      <p class="imp-note" style="margin:12px 0 2px">☆ を押すと「大きく表示」に、写真をタップで拡大して見られます。</p>
       <div class="photo-grid" id="photoThumbs"></div>
       <div class="modal-actions">
         <button class="btn" onclick="closePhotos()">閉じる</button>
       </div>
     </div>
   </div>
+
+  <div id="lightbox" onclick="closeLightbox()"><img id="lightboxImg" src="" alt="" /></div>
 
   <div id="toast" class="toast"></div>
   <canvas id="confetti"></canvas>
@@ -1268,7 +1278,7 @@ async function loadPhotos(){
   if(mode==="cloud" && session){
     try {
       const { data } = await sb.from("photos").select("*").order("created_at", { ascending:true });
-      photos = (data||[]).map(r => ({ id:r.id, data:r.data, rx:r.rx, ry:r.ry, rot:r.rot }));
+      photos = (data||[]).map(r => ({ id:r.id, data:r.data, rx:r.rx, ry:r.ry, rot:r.rot, big:!!r.big }));
     } catch(e){ console.warn("写真の取得に失敗", e); photos = []; }
   } else if(mode==="local"){ loadPhotosLocal(); }
   else { photos = []; }
@@ -1300,9 +1310,9 @@ async function onPhotoFiles(ev){
     if(!/^image\//.test(file.type)) continue;
     try {
       const data = await compressImage(file, 900, 0.72);
-      const p = { id: uid(), data, rx: Math.random(), ry: Math.random(), rot: Math.round((Math.random()*24 - 12)) };
+      const p = { id: uid(), data, rx: Math.random(), ry: Math.random(), rot: Math.round((Math.random()*24 - 12)), big: false };
       if(mode==="cloud"){
-        const { data: row, error } = await sb.from("photos").insert({ data:p.data, rx:p.rx, ry:p.ry, rot:p.rot }).select().single();
+        const { data: row, error } = await sb.from("photos").insert({ data:p.data, rx:p.rx, ry:p.ry, rot:p.rot, big:false }).select().single();
         if(error){ document.getElementById("photoStatus").textContent = "写真機能はまだ準備中（SQL未適用）"; console.error(error); return; }
         if(row) p.id = row.id;
       }
@@ -1331,13 +1341,25 @@ function renderPhotoThumbs(){
   if(!photos.length){ box.innerHTML = '<div class="photo-empty">まだ写真がありません。「＋ 写真を追加」から貼ってみよう 📷</div>'; return; }
   box.innerHTML = "";
   photos.forEach(p => {
-    const d = document.createElement("div"); d.className = "photo-thumb";
-    const im = document.createElement("img"); im.src = p.data;
-    const b = document.createElement("button"); b.textContent = "✕"; b.title = "削除";
-    b.onclick = () => { if(confirm("この写真を削除する？")) removePhoto(p.id); };
-    d.appendChild(im); d.appendChild(b); box.appendChild(d);
+    const d = document.createElement("div"); d.className = "photo-thumb" + (p.big ? " big" : "");
+    const im = document.createElement("img"); im.src = p.data; im.alt = "";
+    im.onclick = () => openLightbox(p.data);
+    const star = document.createElement("button"); star.className = "pt-star"; star.textContent = p.big ? "★" : "☆";
+    star.title = "大きく表示する"; star.onclick = (e) => { e.stopPropagation(); toggleBig(p.id); };
+    const del = document.createElement("button"); del.className = "pt-del"; del.textContent = "✕"; del.title = "削除";
+    del.onclick = (e) => { e.stopPropagation(); if(confirm("この写真を削除する？")) removePhoto(p.id); };
+    d.appendChild(im); d.appendChild(star); d.appendChild(del); box.appendChild(d);
   });
 }
+async function toggleBig(id){
+  const p = photos.find(x => x.id === id); if(!p) return;
+  p.big = !p.big;
+  if(mode==="cloud"){ try { await sb.from("photos").update({ big: p.big }).eq("id", id); } catch(e){ console.warn(e); } }
+  else savePhotosLocal();
+  renderPhotoThumbs(); buildPhotos();
+}
+function openLightbox(src){ const lb = document.getElementById("lightbox"); document.getElementById("lightboxImg").src = src; lb.classList.add("open"); }
+function closeLightbox(){ document.getElementById("lightbox").classList.remove("open"); }
 function buildPhotos(){
   const board = document.getElementById("photoBoard");
   if(!board) return;
@@ -1345,7 +1367,7 @@ function buildPhotos(){
   if(mode==="shared"){ return; }
   photos.forEach(p => {
     const im = document.createElement("img"); im.className = "board-photo"; im.src = p.data;
-    im.dataset.rx = p.rx; im.dataset.ry = p.ry; im.dataset.rot = p.rot;
+    im.dataset.rx = p.rx; im.dataset.ry = p.ry; im.dataset.rot = p.rot; im.dataset.big = p.big ? "1" : "";
     board.appendChild(im);
   });
   layoutPhotos();
@@ -1359,18 +1381,27 @@ function layoutPhotos(){
   const vw = window.innerWidth;
   const contentW = Math.min(vw, 1036);
   const gutter = (vw - contentW) / 2;
+  const wide = gutter > 150;
+  const n = board.children.length;
+  // 枚数が少なければ大きく、多ければ小さく
+  const base = Math.max(84, Math.min(200, 220 - n * 9));
+  const maxW = wide ? (gutter - 14) : (vw * 0.62);
   [...board.children].forEach(im => {
-    const rx = +im.dataset.rx, ry = +im.dataset.ry, rot = +im.dataset.rot;
-    const size = 92 + Math.round(rx * 48);
+    const rx = +im.dataset.rx, ry = +im.dataset.ry, rot = +im.dataset.rot, big = im.dataset.big === "1";
+    let size = big ? Math.round(base * 1.85) : Math.round(base + rx * 34 - 17);
+    size = Math.max(66, Math.min(size, maxW));
     im.style.width = size + "px";
     im.style.setProperty("--rot", rot + "deg");
-    let x, op = .95;
-    if(gutter > 150){
+    im.style.zIndex = big ? "2" : "1";
+    let x, op;
+    if(wide){
       const left = rx < 0.5;
-      const gx = ry * Math.max(0, gutter - size - 16);
-      x = left ? (8 + gx) : (vw - gutter + 8 + gx);
+      const gx = ry * Math.max(0, gutter - size - 14);
+      x = left ? (7 + gx) : (vw - gutter + 7 + gx);
+      op = .96;
     } else {
-      x = Math.round(rx * (vw - size - 8)); op = .2;
+      x = Math.round(rx * (vw - size - 8));
+      op = big ? .4 : .18;
     }
     const y = Math.round(ry * Math.max(0, pageH - size - 40)) + 14;
     im.style.left = Math.max(4, Math.round(x)) + "px";

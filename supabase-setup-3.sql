@@ -10,8 +10,12 @@ create table if not exists public.photos (
   rx         double precision default 0.5,   -- 配置用の乱数(0〜1)
   ry         double precision default 0.5,
   rot        double precision default 0,     -- 傾き(度)
+  big        boolean default false,          -- 大きく表示する写真
   created_at timestamptz default now()
 );
+
+-- 既に photos を作成済みの場合の列追加
+alter table public.photos add column if not exists big boolean default false;
 
 alter table public.photos enable row level security;
 
