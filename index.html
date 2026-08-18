@@ -1388,39 +1388,42 @@ function layoutPhotos(){
   const base = Math.max(84, Math.min(200, 220 - n * 9));
   const maxW = wide ? (gutter - 12) : (vw * 0.42);
   const gap = 12, topStart = 84, bottom = pageH - 8;
-  const sizeOf = (im) => {
-    const rx = +im.dataset.rx, big = im.dataset.big === "1";
-    let s = big ? Math.round(base * 1.85) : Math.round(base + rx * 30 - 15);
-    return Math.max(62, Math.min(s, maxW));
-  };
   const place = (im, x, y, size, op) => {
     im.style.width = size + "px";
-    im.style.left = Math.round(Math.max(2, Math.min(x, vw - size - 2))) + "px";
+    const minX = -Math.round(size * 0.5), maxX = vw - Math.round(size * 0.5);
+    im.style.left = Math.round(Math.max(minX, Math.min(x, maxX))) + "px";
     im.style.top = Math.round(y) + "px";
     im.style.setProperty("--rot", (+im.dataset.rot || 0) + "deg");
     im.style.opacity = op;
     im.style.zIndex = im.dataset.big === "1" ? "2" : "1";
   };
-  // 夢リスト(中央)の左右の内側から、追加順に上から詰めて、埋まったら外側の列へ
+  // 夢リスト(中央)の左右の内側から、大きめの写真を重ねながら外へ埋めていく
   if(wide){
-    const colStep = base + gap;
-    const st = { L:{ edge: gutter - 6, y: topStart }, R:{ edge: (vw - gutter) + 6, y: topStart } };
+    const st = { L:{ y: topStart, pass: 0 }, R:{ y: topStart, pass: 0 } };
     items.forEach((im, i) => {
-      const isL = (i % 2 === 0), s = isL ? st.L : st.R, size = sizeOf(im);
-      if(s.y + size > bottom && s.y > topStart){ s.y = topStart; s.edge += isL ? -colStep : colStep; }
-      const x = isL ? (s.edge - size) : s.edge;
-      place(im, x, s.y, size, .96);
-      s.y += size + gap;
+      const isL = (i % 2 === 0), s = isL ? st.L : st.R;
+      const rx = +im.dataset.rx, big = im.dataset.big === "1";
+      let size = big ? maxW : Math.round(maxW * (0.82 + rx * 0.18));
+      size = Math.max(96, Math.min(size, maxW));
+      const off = Math.round(rx * Math.max(0, gutter - size) * 0.5);
+      const x = isL ? (gutter - size - off) : ((vw - gutter) + off);
+      if(s.y + size > bottom && s.y > topStart){ s.pass++; s.y = topStart + s.pass * 34; }
+      place(im, x, s.y, size, .97);
+      s.y += Math.round(size * 0.58);   // 縦に重ねながら詰める
     });
   } else {
-    // スマホは余白が無いので、左右の端に沿って背景に薄く順番に
+    // スマホ: 左右の端から大きめに、はみ出し・重なりOKで見えるように
+    const nmax = Math.round(vw * 0.5);
     const st = { L:{ y: topStart }, R:{ y: topStart } };
     items.forEach((im, i) => {
-      const isL = (i % 2 === 0), s = isL ? st.L : st.R, size = sizeOf(im);
-      if(s.y + size > bottom && s.y > topStart){ s.y = topStart; }
-      const x = isL ? 6 : (vw - size - 6);
-      place(im, x, s.y, size, im.dataset.big === "1" ? .36 : .15);
-      s.y += size + gap;
+      const isL = (i % 2 === 0), s = isL ? st.L : st.R;
+      const rx = +im.dataset.rx, big = im.dataset.big === "1";
+      let size = big ? nmax : Math.round(nmax * (0.72 + rx * 0.28));
+      size = Math.max(90, Math.min(size, nmax));
+      const x = isL ? -Math.round(size * 0.16) : (vw - size + Math.round(size * 0.16));
+      if(s.y + size * 0.7 > bottom && s.y > topStart){ s.y = topStart; }
+      place(im, x, s.y, size, big ? .85 : .62);
+      s.y += Math.round(size * 0.6);
     });
   }
 }
