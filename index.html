@@ -1394,7 +1394,26 @@ function layoutPhotos(){
     im.style.opacity = op;
     im.style.zIndex = im.dataset.big === "1" ? "2" : "1";
   };
-  // 不透明UI(カード群・メーター・ツールバー・操作列)の矩形を測り、その裏には置かない
+  const contentW = Math.min(vw, 1036), gutter = (vw - contentW) / 2, wide = gutter > 150;
+
+  // スマホ（余白が少ない）: 左右の端に沿って大きめに重ねて表示（前回の挙動）
+  if(!wide){
+    const topStart = 84, bottom = pageH - 8, nmax = Math.round(vw * 0.5);
+    const st = { L:{ y: topStart }, R:{ y: topStart } };
+    items.forEach((im, i) => {
+      const isL = (i % 2 === 0), s = isL ? st.L : st.R;
+      const rx = +im.dataset.rx, big = im.dataset.big === "1";
+      let size = big ? nmax : Math.round(nmax * (0.72 + rx * 0.28));
+      size = Math.max(90, Math.min(size, nmax));
+      const x = isL ? -Math.round(size * 0.16) : (vw - size + Math.round(size * 0.16));
+      if(s.y + size * 0.7 > bottom && s.y > topStart){ s.y = topStart; }
+      place(im, x, s.y, size, big ? .85 : .62);
+      s.y += Math.round(size * 0.6);
+    });
+    return;
+  }
+
+  // PC: 不透明UI(カード群/メーター/ツールバー/操作列)を避け、中央上部から左右対称に下へ埋める
   const scY = window.scrollY || document.documentElement.scrollTop || 0;
   const occ = [];
   [".meter", "#toolbar", "#controls", "#grid"].forEach(sel => {
@@ -1402,35 +1421,40 @@ function layoutPhotos(){
     if(el){ const r = el.getBoundingClientRect(); if(r.width && r.height) occ.push({ l:r.left, t:r.top + scY, r:r.right, b:r.bottom + scY }); }
   });
   let occArea = 0; occ.forEach(o => occArea += (o.r - o.l) * (o.b - o.t));
-  // 使える余白面積から1枚のサイズを決める（少なければ大きく、多ければ小さく）
   const area = Math.max(vw * 200, vw * pageH - occArea);
   let cell = Math.round(Math.sqrt(area / Math.max(1, n)) * 0.86);
-  cell = Math.max(94, Math.min(cell, 230));
+  cell = Math.max(96, Math.min(cell, 230));
   const gap = 8, stepC = cell + gap, pad = 6;
   const allowed = (x, y) => {
     const l = x, t = y, rr = x + cell, bb = y + cell;
     for(const o of occ){ if(rr > o.l - pad && l < o.r + pad && bb > o.t - pad && t < o.b + pad) return false; }
     return true;
   };
-  // 余白を上→下・左→右に詰めるスロットを作る
   const slots = [];
   for(let y = 6; y + cell <= pageH - 6; y += stepC){
     for(let x = 6; x + cell <= vw - 6; x += stepC){
       if(allowed(x, y)) slots.push({ x, y });
     }
-    if(slots.length > n + 40) break;                // 必要数だけ（＝上から優先で埋まる）
+    if(slots.length > n + 80) break;
   }
+  // 中央上部を主役に、左右同数・下方向へ広げる順序に並べる
+  const cx0 = vw / 2;
+  const scoreOf = s => s.y + Math.abs((s.x + cell / 2) - cx0) * 0.55;
+  const L = slots.filter(s => (s.x + cell / 2) < cx0).sort((a, b) => scoreOf(a) - scoreOf(b));
+  const R = slots.filter(s => (s.x + cell / 2) >= cx0).sort((a, b) => scoreOf(a) - scoreOf(b));
+  const ordered = [];
+  for(let k = 0; k < Math.max(L.length, R.length); k++){ if(L[k]) ordered.push(L[k]); if(R[k]) ordered.push(R[k]); }
   items.forEach((im, i) => {
     const rx = +im.dataset.rx, big = im.dataset.big === "1";
     const size = big ? Math.round(cell * 1.4) : Math.round(cell * (0.9 + rx * 0.1));
     let x, y, op;
-    if(i < slots.length){                            // 通常: 重ならないスロットに配置
-      const s = slots[i];
+    if(i < ordered.length){
+      const s = ordered[i];
       x = s.x - Math.round((size - cell) / 2);
       y = s.y - Math.round((size - cell) / 2);
       op = big ? .97 : .93;
     } else {                                         // 入り切らない分だけ、ずらして重ねる
-      const s = slots.length ? slots[i % slots.length] : { x: 8, y: 8 };
+      const s = ordered.length ? ordered[i % ordered.length] : { x: 8, y: 8 };
       x = s.x + Math.round((rx - 0.5) * cell);
       y = s.y + Math.round(((+im.dataset.rot || 0) / 12) * cell * 0.5);
       op = big ? .95 : .86;
