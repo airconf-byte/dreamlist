@@ -86,15 +86,19 @@
 
   .wrap { max-width: 1000px; margin: 0 auto; padding: 26px 18px 90px; }
 
-  header.hero { text-align: center; padding: 14px 0 6px; }
-  .kicker { letter-spacing: .34em; font-size: 10px; color: var(--accent-2); font-weight: 700; text-transform: uppercase; margin-bottom: 16px; opacity: .9; }
+  header.hero { text-align: center; padding: 14px 0 6px; position: relative; }
+  header.hero::before { content: ""; position: absolute; left: 50%; top: -14px; transform: translateX(-50%);
+    width: min(600px, 98%); height: 250px; z-index: -1; pointer-events: none;
+    background: radial-gradient(ellipse at center, rgba(255,253,247,.94) 0%, rgba(255,253,247,.72) 46%, rgba(255,253,247,0) 78%); }
+  .kicker { letter-spacing: .34em; font-size: 10px; color: var(--accent-2); font-weight: 700; text-transform: uppercase; margin-bottom: 16px; opacity: .9; text-shadow: 0 1px 4px rgba(255,253,247,.9); }
   h1 {
     font-family: "Zen Kaku Gothic New", sans-serif; font-weight: 900;
     margin: 0; font-size: 46px; letter-spacing: .01em; line-height: 1.06;
+    text-shadow: 0 1px 12px rgba(255,253,247,.8);
   }
   h1 .num { color: var(--accent); padding: 0 .04em; text-shadow: 0 1px 16px rgba(226,162,51,.4); }
-  .subtitle { color: var(--text-soft); margin: 15px 0 0; font-size: 13px; letter-spacing: .04em; }
-  .epigraph { font-family: "Zen Kaku Gothic New", sans-serif; font-weight: 700; margin: 14px 0 0; font-size: 11.5px; letter-spacing: .3em; padding-left: .3em; color: var(--accent); }
+  .subtitle { color: var(--text-soft); margin: 15px 0 0; font-size: 13px; letter-spacing: .04em; text-shadow: 0 1px 4px rgba(255,253,247,.9); }
+  .epigraph { font-family: "Zen Kaku Gothic New", sans-serif; font-weight: 700; margin: 14px 0 0; font-size: 11.5px; letter-spacing: .3em; padding-left: .3em; color: var(--accent); text-shadow: 0 1px 4px rgba(255,253,247,.9); }
 
   .meter {
     margin: 26px auto 0; max-width: 620px;
@@ -152,7 +156,7 @@
 
   /* 並べ替え・絞り込みコントロール */
   .controls { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; margin: 0 0 22px; }
-  .ctrl { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--text-soft); font-weight: 700; letter-spacing: .04em; }
+  .ctrl { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--text-soft); font-weight: 700; letter-spacing: .04em; text-shadow: 0 1px 3px rgba(255,253,247,.95); }
   .ctrl select { appearance: none; -webkit-appearance: none; border: 1px solid var(--stroke); color: var(--text);
     background: var(--panel-2) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'><path d='M2 4.5l4 4 4-4' stroke='%239a9aa0' stroke-width='1.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>") no-repeat right 12px center;
     border-radius: 10px; padding: 9px 32px 9px 13px; font-family: "Zen Kaku Gothic New", sans-serif; font-size: 12.5px; font-weight: 700; cursor: pointer;
@@ -203,7 +207,7 @@
   .card.reorderable:active { cursor: grabbing; }
   .card.dragging { box-shadow: var(--sh-3); opacity: .98; }
   .card-placeholder { border: 2px dashed rgba(0,0,0,.22); border-radius: 12px; background: rgba(0,0,0,.03); box-sizing: border-box; }
-  .reorder-hint { text-align: center; font-size: 11px; color: var(--text-soft); opacity: .65; margin: -10px 0 16px; min-height: 14px; letter-spacing: .02em; }
+  .reorder-hint { text-align: center; font-size: 11px; color: var(--text-soft); opacity: .8; margin: -10px 0 16px; min-height: 14px; letter-spacing: .02em; text-shadow: 0 1px 3px rgba(255,253,247,.95); }
 
   .add-card {
     border: 1.5px dashed var(--stroke); background: rgba(0,0,0,.012); border-radius: 12px;
@@ -308,7 +312,7 @@
   #lightbox img { max-width: 94vw; max-height: 90vh; border-radius: 8px; border: 5px solid #fff; box-shadow: 0 24px 60px rgba(0,0,0,.55); }
 
   .empty-note { text-align: center; color: var(--text-soft); padding: 40px; font-size: 14px; }
-  footer { text-align: center; color: var(--text-soft); font-size: 12px; margin-top: 46px; opacity: .7; }
+  footer { text-align: center; color: var(--text-soft); font-size: 12px; margin-top: 46px; opacity: .8; text-shadow: 0 1px 3px rgba(255,253,247,.95); }
   #confetti { position: fixed; inset: 0; pointer-events: none; z-index: 60; }
 
   @media (max-width: 520px) {
@@ -1384,10 +1388,8 @@ function layoutPhotos(){
   const wide = gutter > 150;
   const items = [...board.children];
   const n = items.length;
-  // 枚数が少なければ大きく、多ければ小さく
-  const base = Math.max(84, Math.min(200, 220 - n * 9));
-  const maxW = wide ? (gutter - 12) : (vw * 0.42);
-  const gap = 12, topStart = 84, bottom = pageH - 8;
+  // 枚数が少なければ大きく、多ければそれなりに（全面を埋める前提で大きめ）
+  const base = Math.max(118, Math.min(250, 300 - n * 7));
   const place = (im, x, y, size, op) => {
     im.style.width = size + "px";
     const minX = -Math.round(size * 0.5), maxX = vw - Math.round(size * 0.5);
@@ -1397,35 +1399,16 @@ function layoutPhotos(){
     im.style.opacity = op;
     im.style.zIndex = im.dataset.big === "1" ? "2" : "1";
   };
-  // 夢リスト(中央)の左右の内側から、大きめの写真を重ねながら外へ埋めていく
-  if(wide){
-    const st = { L:{ y: topStart, pass: 0 }, R:{ y: topStart, pass: 0 } };
-    items.forEach((im, i) => {
-      const isL = (i % 2 === 0), s = isL ? st.L : st.R;
-      const rx = +im.dataset.rx, big = im.dataset.big === "1";
-      let size = big ? maxW : Math.round(maxW * (0.82 + rx * 0.18));
-      size = Math.max(96, Math.min(size, maxW));
-      const off = Math.round(rx * Math.max(0, gutter - size) * 0.5);
-      const x = isL ? (gutter - size - off) : ((vw - gutter) + off);
-      if(s.y + size > bottom && s.y > topStart){ s.pass++; s.y = topStart + s.pass * 34; }
-      place(im, x, s.y, size, .97);
-      s.y += Math.round(size * 0.58);   // 縦に重ねながら詰める
-    });
-  } else {
-    // スマホ: 左右の端から大きめに、はみ出し・重なりOKで見えるように
-    const nmax = Math.round(vw * 0.5);
-    const st = { L:{ y: topStart }, R:{ y: topStart } };
-    items.forEach((im, i) => {
-      const isL = (i % 2 === 0), s = isL ? st.L : st.R;
-      const rx = +im.dataset.rx, big = im.dataset.big === "1";
-      let size = big ? nmax : Math.round(nmax * (0.72 + rx * 0.28));
-      size = Math.max(90, Math.min(size, nmax));
-      const x = isL ? -Math.round(size * 0.16) : (vw - size + Math.round(size * 0.16));
-      if(s.y + size * 0.7 > bottom && s.y > topStart){ s.y = topStart; }
-      place(im, x, s.y, size, big ? .85 : .62);
-      s.y += Math.round(size * 0.6);
-    });
-  }
+  // ページ全体（中央上部の余白も含む）にランダムに散らして埋め尽くす
+  const maxSize = Math.round(vw * (wide ? 0.28 : 0.52));
+  items.forEach(im => {
+    const rx = +im.dataset.rx, ry = +im.dataset.ry, big = im.dataset.big === "1";
+    let size = big ? Math.round(base * 1.5) : Math.round(base * (0.7 + rx * 0.5));
+    size = Math.max(88, Math.min(size, maxSize));
+    const x = Math.round(rx * (vw + size * 0.3) - size * 0.15);
+    const y = Math.round(ry * Math.max(0, pageH - size * 0.5) - size * 0.05);
+    place(im, x, y, size, big ? .95 : (wide ? .9 : .8));
+  });
 }
 
 /* ---------- 認証 ---------- */
