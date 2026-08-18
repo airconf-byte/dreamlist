@@ -289,6 +289,17 @@
   .feed-row .when { font-size: 11px; color: var(--text-soft); margin-left: 6px; }
   .rank-empty { text-align: center; color: var(--text-soft); padding: 34px 16px; font-size: 13px; line-height: 1.7; }
 
+  /* 写真ボード（余白に散らばる写真） */
+  #photoBoard { position: absolute; top: 0; left: 0; width: 100%; z-index: -1; pointer-events: none; overflow: hidden; }
+  .board-photo { position: absolute; width: 100px; border: 4px solid #fff; border-radius: 3px;
+    box-shadow: 0 6px 16px rgba(90,65,30,.28); transform: rotate(var(--rot,0deg)); object-fit: cover;
+    aspect-ratio: 1 / 1; background: #fff; }
+  .photo-grid { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0 4px; max-height: 46vh; overflow-y: auto; }
+  .photo-thumb { position: relative; width: 74px; height: 74px; border-radius: 8px; overflow: hidden; border: 1px solid var(--stroke); }
+  .photo-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .photo-thumb button { position: absolute; top: 3px; right: 3px; width: 20px; height: 20px; border: none; border-radius: 50%; background: rgba(0,0,0,.6); color: #fff; cursor: pointer; font-size: 12px; line-height: 1; display: flex; align-items: center; justify-content: center; }
+  .photo-empty { color: var(--text-soft); font-size: 13px; padding: 16px 4px; }
+
   .empty-note { text-align: center; color: var(--text-soft); padding: 40px; font-size: 14px; }
   footer { text-align: center; color: var(--text-soft); font-size: 12px; margin-top: 46px; opacity: .7; }
   #confetti { position: fixed; inset: 0; pointer-events: none; z-index: 60; }
@@ -303,6 +314,7 @@
 <body>
   <div class="sky"></div>
   <div class="stars"></div>
+  <div id="photoBoard"></div>
 
   <div id="shareBanner">
     <span id="shareBannerText">共有された夢リストを見ています（閲覧専用）</span>
@@ -355,6 +367,7 @@
         <button class="btn" id="menuBtn" onclick="toggleMenu(event)">⋯ メニュー</button>
         <div class="menu" id="menu">
           <button onclick="shareList(); closeMenu()">🔗 共有リンクをコピー</button>
+          <button onclick="openPhotos(); closeMenu()">🖼 写真ボード</button>
           <button onclick="openSettings(); closeMenu()">⚙️ 設定（表示名・公開）</button>
           <button onclick="openImport(); closeMenu()">📊 表から取込（Excel/CSV/md）</button>
           <button onclick="exportJson(); closeMenu()">⬇ バックアップ</button>
@@ -495,6 +508,20 @@
     </div>
   </div>
 
+  <!-- 写真ボード管理モーダル -->
+  <div class="modal-bg" id="photoBg">
+    <div class="modal" style="max-width:480px">
+      <h3>🖼 夢の写真ボード</h3>
+      <p class="imp-note">叶えたい景色や、なりたい自分の写真を貼りましょう。追加した写真は、夢リストの余白にランダムに散らばって表示されます。</p>
+      <label class="btn primary" style="cursor:pointer">＋ 写真を追加<input type="file" id="photoFile" accept="image/*" multiple style="display:none" onchange="onPhotoFiles(event)"></label>
+      <span class="imp-fname" id="photoStatus"></span>
+      <div class="photo-grid" id="photoThumbs"></div>
+      <div class="modal-actions">
+        <button class="btn" onclick="closePhotos()">閉じる</button>
+      </div>
+    </div>
+  </div>
+
   <div id="toast" class="toast"></div>
   <canvas id="confetti"></canvas>
 
@@ -526,12 +553,15 @@ const CATEGORIES = [
 const DEADLINES = ["1年以内", "3年以内", "10年以内", "いつか"];
 const DEAD_RANK = { "1年以内":0, "3年以内":1, "10年以内":2, "いつか":3 };
 const STORE_KEY = "yumeList100_v1";
+const STORE_PHOTOS_KEY = "yumeList100_photos_v1";
+let photos = [];
 
 let dreams = [];
 let activeTab = "all";
 let sortMode = "added";        // "added" | "done" | "category" | "deadline"
 let deadlineFilter = "all";    // "all" | 各期限
 let groupMode = "none";        // "none" | "deadline" | "category"
+let reorderOn = false;         // 手動並べ替えが有効か
 let editingId = null;
 let modalDeadline = "いつか";
 let readOnly = false;
@@ -644,9 +674,9 @@ function render(){
     add.onclick = () => openAdd(activeTab==="all"?null:activeTab);
     grid.appendChild(add);
   }
+  layoutPhotos();
 }
 /* ---------- ドラッグ&ドロップ並べ替え（マウス/タッチ共通） ---------- */
-let reorderOn = false;
 let dragCard = null, placeholder = null, dragOffX = 0, dragOffY = 0;
 const LONGPRESS_MS = 240, TOUCH_CANCEL = 10, MOUSE_START = 6;
 
@@ -1231,6 +1261,124 @@ async function openRanking(){
 }
 function closeRanking(){ document.getElementById("rankBg").classList.remove("open"); }
 
+/* ---------- 写真ボード ---------- */
+function loadPhotosLocal(){ try { photos = JSON.parse(localStorage.getItem(STORE_PHOTOS_KEY)) || []; } catch(e){ photos = []; } }
+function savePhotosLocal(){ try { localStorage.setItem(STORE_PHOTOS_KEY, JSON.stringify(photos)); } catch(e){ alert("写真の保存に失敗しました（この端末の容量が上限かも）。枚数を減らしてね"); } }
+async function loadPhotos(){
+  if(mode==="cloud" && session){
+    try {
+      const { data } = await sb.from("photos").select("*").order("created_at", { ascending:true });
+      photos = (data||[]).map(r => ({ id:r.id, data:r.data, rx:r.rx, ry:r.ry, rot:r.rot }));
+    } catch(e){ console.warn("写真の取得に失敗", e); photos = []; }
+  } else if(mode==="local"){ loadPhotosLocal(); }
+  else { photos = []; }
+}
+function compressImage(file, maxDim, quality){
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      let w = img.naturalWidth, h = img.naturalHeight;
+      const s = Math.min(1, maxDim / Math.max(w, h));
+      w = Math.max(1, Math.round(w*s)); h = Math.max(1, Math.round(h*s));
+      const cv = document.createElement("canvas"); cv.width = w; cv.height = h;
+      cv.getContext("2d").drawImage(img, 0, 0, w, h);
+      URL.revokeObjectURL(url);
+      resolve(cv.toDataURL("image/jpeg", quality));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("画像を読み込めません")); };
+    img.src = url;
+  });
+}
+async function onPhotoFiles(ev){
+  const files = [...ev.target.files]; ev.target.value = "";
+  if(!files.length) return;
+  if(mode==="shared"){ return; }
+  document.getElementById("photoStatus").textContent = "追加中…";
+  let added = 0;
+  for(const file of files){
+    if(!/^image\//.test(file.type)) continue;
+    try {
+      const data = await compressImage(file, 900, 0.72);
+      const p = { id: uid(), data, rx: Math.random(), ry: Math.random(), rot: Math.round((Math.random()*24 - 12)) };
+      if(mode==="cloud"){
+        const { data: row, error } = await sb.from("photos").insert({ data:p.data, rx:p.rx, ry:p.ry, rot:p.rot }).select().single();
+        if(error){ document.getElementById("photoStatus").textContent = "写真機能はまだ準備中（SQL未適用）"; console.error(error); return; }
+        if(row) p.id = row.id;
+      }
+      photos.push(p); added++;
+    } catch(e){ console.warn(e); }
+  }
+  if(mode!=="cloud") savePhotosLocal();
+  document.getElementById("photoStatus").textContent = added ? (added + "枚追加しました") : "";
+  renderPhotoThumbs(); buildPhotos();
+}
+async function removePhoto(id){
+  photos = photos.filter(p => p.id !== id);
+  if(mode==="cloud"){ try { await sb.from("photos").delete().eq("id", id); } catch(e){ console.warn(e); } }
+  else savePhotosLocal();
+  renderPhotoThumbs(); buildPhotos();
+}
+function openPhotos(){
+  if(mode==="shared"){ return; }
+  renderPhotoThumbs();
+  document.getElementById("photoStatus").textContent = "";
+  document.getElementById("photoBg").classList.add("open");
+}
+function closePhotos(){ document.getElementById("photoBg").classList.remove("open"); }
+function renderPhotoThumbs(){
+  const box = document.getElementById("photoThumbs");
+  if(!photos.length){ box.innerHTML = '<div class="photo-empty">まだ写真がありません。「＋ 写真を追加」から貼ってみよう 📷</div>'; return; }
+  box.innerHTML = "";
+  photos.forEach(p => {
+    const d = document.createElement("div"); d.className = "photo-thumb";
+    const im = document.createElement("img"); im.src = p.data;
+    const b = document.createElement("button"); b.textContent = "✕"; b.title = "削除";
+    b.onclick = () => { if(confirm("この写真を削除する？")) removePhoto(p.id); };
+    d.appendChild(im); d.appendChild(b); box.appendChild(d);
+  });
+}
+function buildPhotos(){
+  const board = document.getElementById("photoBoard");
+  if(!board) return;
+  board.innerHTML = "";
+  if(mode==="shared"){ return; }
+  photos.forEach(p => {
+    const im = document.createElement("img"); im.className = "board-photo"; im.src = p.data;
+    im.dataset.rx = p.rx; im.dataset.ry = p.ry; im.dataset.rot = p.rot;
+    board.appendChild(im);
+  });
+  layoutPhotos();
+}
+function layoutPhotos(){
+  const board = document.getElementById("photoBoard");
+  if(!board || !board.children.length) { if(board) board.style.height = "0"; return; }
+  board.style.height = "0";   // 自分自身をscrollHeight計算から除外して測る
+  const pageH = Math.max(document.documentElement.scrollHeight, window.innerHeight);
+  board.style.height = pageH + "px";
+  const vw = window.innerWidth;
+  const contentW = Math.min(vw, 1036);
+  const gutter = (vw - contentW) / 2;
+  [...board.children].forEach(im => {
+    const rx = +im.dataset.rx, ry = +im.dataset.ry, rot = +im.dataset.rot;
+    const size = 92 + Math.round(rx * 48);
+    im.style.width = size + "px";
+    im.style.setProperty("--rot", rot + "deg");
+    let x, op = .95;
+    if(gutter > 150){
+      const left = rx < 0.5;
+      const gx = ry * Math.max(0, gutter - size - 16);
+      x = left ? (8 + gx) : (vw - gutter + 8 + gx);
+    } else {
+      x = Math.round(rx * (vw - size - 8)); op = .2;
+    }
+    const y = Math.round(ry * Math.max(0, pageH - size - 40)) + 14;
+    im.style.left = Math.max(4, Math.round(x)) + "px";
+    im.style.top = y + "px";
+    im.style.opacity = op;
+  });
+}
+
 /* ---------- 認証 ---------- */
 function showAuth(){ document.getElementById("authScreen").classList.add("open"); document.querySelector(".wrap").style.display = "none"; }
 function hideAuth(){ document.getElementById("authScreen").classList.remove("open"); document.querySelector(".wrap").style.display = "block"; }
@@ -1423,6 +1571,8 @@ async function init(){
   document.getElementById("settingsBg").addEventListener("click", e => { if(e.target.id==="settingsBg") closeSettings(); });
   document.getElementById("rankBg").addEventListener("click", e => { if(e.target.id==="rankBg") closeRanking(); });
   document.addEventListener("click", e => { if(!e.target.closest(".menu-wrap")) closeMenu(); });
+  document.getElementById("photoBg").addEventListener("click", e => { if(e.target.id==="photoBg") closePhotos(); });
+  let _rt; window.addEventListener("resize", () => { clearTimeout(_rt); _rt = setTimeout(layoutPhotos, 150); });
   document.getElementById("mText").addEventListener("keydown", e => { if(e.key==="Enter"){ e.preventDefault(); saveDream(); } });
   document.getElementById("authPass").addEventListener("keydown", e => { if(e.key==="Enter") submitAuth(); });
 
@@ -1435,16 +1585,16 @@ async function init(){
     sb.auth.onAuthStateChange(async (event, s) => {
       session = s;
       if(event==="PASSWORD_RECOVERY"){ recovering = true; showAuth(); setAuthMode("newpass"); return; }
-      if(event==="SIGNED_IN"){ if(recovering) return; mode="cloud"; hideAuth(); await dbLoad(); await loadProfile(); render(); refreshAcct(); }
-      else if(event==="SIGNED_OUT"){ mode="local"; session=null; myProfile=null; dreams=[]; render(); refreshAcct(); showAuth(); }
+      if(event==="SIGNED_IN"){ if(recovering) return; mode="cloud"; hideAuth(); await dbLoad(); await loadProfile(); await loadPhotos(); render(); buildPhotos(); refreshAcct(); }
+      else if(event==="SIGNED_OUT"){ mode="local"; session=null; myProfile=null; dreams=[]; photos=[]; render(); buildPhotos(); refreshAcct(); showAuth(); }
     });
     if(isRecovery){ recovering = true; showAuth(); setAuthMode("newpass"); return; }
     const { data } = await sb.auth.getSession();
     session = data.session;
-    if(session){ mode="cloud"; hideAuth(); await dbLoad(); await loadProfile(); render(); refreshAcct(); }
+    if(session){ mode="cloud"; hideAuth(); await dbLoad(); await loadProfile(); await loadPhotos(); render(); buildPhotos(); refreshAcct(); }
     else { showAuth(); }
   } else {
-    mode = "local"; loadLocal(); render();
+    mode = "local"; loadLocal(); loadPhotosLocal(); render(); buildPhotos();
   }
 }
 init();
