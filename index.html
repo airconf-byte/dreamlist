@@ -1383,31 +1383,59 @@ function layoutPhotos(){
   const pageH = Math.max(document.documentElement.scrollHeight, window.innerHeight);
   board.style.height = pageH + "px";
   const vw = window.innerWidth;
-  const contentW = Math.min(vw, 1036);
-  const gutter = (vw - contentW) / 2;
-  const wide = gutter > 150;
   const items = [...board.children];
   const n = items.length;
-  // 枚数が少なければ大きく、多ければそれなりに（全面を埋める前提で大きめ）
-  const base = Math.max(118, Math.min(250, 300 - n * 7));
   const place = (im, x, y, size, op) => {
     im.style.width = size + "px";
-    const minX = -Math.round(size * 0.5), maxX = vw - Math.round(size * 0.5);
+    const minX = -Math.round(size * 0.45), maxX = vw - Math.round(size * 0.55);
     im.style.left = Math.round(Math.max(minX, Math.min(x, maxX))) + "px";
     im.style.top = Math.round(y) + "px";
     im.style.setProperty("--rot", (+im.dataset.rot || 0) + "deg");
     im.style.opacity = op;
     im.style.zIndex = im.dataset.big === "1" ? "2" : "1";
   };
-  // ページ全体（中央上部の余白も含む）にランダムに散らして埋め尽くす
-  const maxSize = Math.round(vw * (wide ? 0.28 : 0.52));
-  items.forEach(im => {
-    const rx = +im.dataset.rx, ry = +im.dataset.ry, big = im.dataset.big === "1";
-    let size = big ? Math.round(base * 1.5) : Math.round(base * (0.7 + rx * 0.5));
-    size = Math.max(88, Math.min(size, maxSize));
-    const x = Math.round(rx * (vw + size * 0.3) - size * 0.15);
-    const y = Math.round(ry * Math.max(0, pageH - size * 0.5) - size * 0.05);
-    place(im, x, y, size, big ? .95 : (wide ? .9 : .8));
+  // 不透明UI(カード群・メーター・ツールバー・操作列)の矩形を測り、その裏には置かない
+  const scY = window.scrollY || document.documentElement.scrollTop || 0;
+  const occ = [];
+  [".meter", "#toolbar", "#controls", "#grid"].forEach(sel => {
+    const el = document.querySelector(sel);
+    if(el){ const r = el.getBoundingClientRect(); if(r.width && r.height) occ.push({ l:r.left, t:r.top + scY, r:r.right, b:r.bottom + scY }); }
+  });
+  let occArea = 0; occ.forEach(o => occArea += (o.r - o.l) * (o.b - o.t));
+  // 使える余白面積から1枚のサイズを決める（少なければ大きく、多ければ小さく）
+  const area = Math.max(vw * 200, vw * pageH - occArea);
+  let cell = Math.round(Math.sqrt(area / Math.max(1, n)) * 0.86);
+  cell = Math.max(94, Math.min(cell, 230));
+  const gap = 8, stepC = cell + gap, pad = 6;
+  const allowed = (x, y) => {
+    const l = x, t = y, rr = x + cell, bb = y + cell;
+    for(const o of occ){ if(rr > o.l - pad && l < o.r + pad && bb > o.t - pad && t < o.b + pad) return false; }
+    return true;
+  };
+  // 余白を上→下・左→右に詰めるスロットを作る
+  const slots = [];
+  for(let y = 6; y + cell <= pageH - 6; y += stepC){
+    for(let x = 6; x + cell <= vw - 6; x += stepC){
+      if(allowed(x, y)) slots.push({ x, y });
+    }
+    if(slots.length > n + 40) break;                // 必要数だけ（＝上から優先で埋まる）
+  }
+  items.forEach((im, i) => {
+    const rx = +im.dataset.rx, big = im.dataset.big === "1";
+    const size = big ? Math.round(cell * 1.4) : Math.round(cell * (0.9 + rx * 0.1));
+    let x, y, op;
+    if(i < slots.length){                            // 通常: 重ならないスロットに配置
+      const s = slots[i];
+      x = s.x - Math.round((size - cell) / 2);
+      y = s.y - Math.round((size - cell) / 2);
+      op = big ? .97 : .93;
+    } else {                                         // 入り切らない分だけ、ずらして重ねる
+      const s = slots.length ? slots[i % slots.length] : { x: 8, y: 8 };
+      x = s.x + Math.round((rx - 0.5) * cell);
+      y = s.y + Math.round(((+im.dataset.rot || 0) / 12) * cell * 0.5);
+      op = big ? .95 : .86;
+    }
+    place(im, x, y, size, op);
   });
 }
 
