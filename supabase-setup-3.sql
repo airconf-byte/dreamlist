@@ -11,11 +11,13 @@ create table if not exists public.photos (
   ry         double precision default 0.5,
   rot        double precision default 0,     -- 傾き(度)
   big        boolean default false,          -- 大きく表示する写真
+  pinned     boolean default false,          -- 位置を固定する写真
   created_at timestamptz default now()
 );
 
 -- 既に photos を作成済みの場合の列追加
 alter table public.photos add column if not exists big boolean default false;
+alter table public.photos add column if not exists pinned boolean default false;
 
 alter table public.photos enable row level security;
 

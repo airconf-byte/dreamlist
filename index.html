@@ -306,6 +306,9 @@
   .pt-del { top: 3px; right: 3px; background: rgba(0,0,0,.6); color: #fff; }
   .pt-star { top: 3px; left: 3px; background: rgba(0,0,0,.5); color: var(--gold); font-size: 13px; }
   .photo-thumb.big .pt-star { background: var(--accent); color: #3a2c0c; }
+  .pt-pin { bottom: 3px; left: 3px; background: rgba(0,0,0,.5); color: #fff; font-size: 11px; filter: grayscale(1) brightness(1.4); }
+  .photo-thumb.pinned .pt-pin { background: #5aa0e0; filter: none; }
+  .photo-thumb.pinned { box-shadow: inset 0 0 0 2px #5aa0e0; }
   .photo-empty { grid-column: 1 / -1; color: var(--text-soft); font-size: 13px; padding: 16px 4px; }
   #lightbox { display: none; position: fixed; inset: 0; background: rgba(24,18,6,.84); z-index: 80; align-items: center; justify-content: center; padding: 20px; cursor: zoom-out; }
   #lightbox.open { display: flex; }
@@ -551,7 +554,10 @@
       <p class="imp-note">叶えたい景色や、なりたい自分の写真を貼りましょう。追加した写真は、夢リストの余白にランダムに散らばって表示されます。</p>
       <label class="btn primary" style="cursor:pointer">＋ 写真を追加<input type="file" id="photoFile" accept="image/*" multiple style="display:none" onchange="onPhotoFiles(event)"></label>
       <span class="imp-fname" id="photoStatus"></span>
-      <p class="imp-note" style="margin:12px 0 2px">☆ を押すと「大きく表示」に、写真をタップで拡大して見られます。</p>
+      <div style="display:flex;gap:8px;align-items:center;margin:12px 0 4px;flex-wrap:wrap">
+        <button class="btn" onclick="shufflePhotos()">🔀 シャッフル</button>
+        <span style="font-size:11px;color:var(--text-soft)">☆=大きく表示 / 📌=位置を固定（固定以外は毎回ランダムに並びます）/ タップで拡大</span>
+      </div>
       <div class="photo-grid" id="photoThumbs"></div>
       <div class="modal-actions">
         <button class="btn" onclick="closePhotos()">閉じる</button>
@@ -1331,7 +1337,7 @@ async function loadPhotos(){
   if(mode==="cloud" && session){
     try {
       const { data } = await sb.from("photos").select("*").order("created_at", { ascending:true });
-      photos = (data||[]).map(r => ({ id:r.id, data:r.data, rx:r.rx, ry:r.ry, rot:r.rot, big:!!r.big }));
+      photos = (data||[]).map(r => ({ id:r.id, data:r.data, rx:r.rx, ry:r.ry, rot:r.rot, big:!!r.big, pinned:!!r.pinned }));
     } catch(e){ console.warn("写真の取得に失敗", e); photos = []; }
   } else if(mode==="local"){ loadPhotosLocal(); }
   else { photos = []; }
@@ -1363,9 +1369,9 @@ async function onPhotoFiles(ev){
     if(!/^image\//.test(file.type)) continue;
     try {
       const data = await compressImage(file, 900, 0.72);
-      const p = { id: uid(), data, rx: Math.random(), ry: Math.random(), rot: Math.round((Math.random()*24 - 12)), big: false };
+      const p = { id: uid(), data, rx: Math.random(), ry: Math.random(), rot: Math.round((Math.random()*24 - 12)), big: false, pinned: false };
       if(mode==="cloud"){
-        const { data: row, error } = await sb.from("photos").insert({ data:p.data, rx:p.rx, ry:p.ry, rot:p.rot, big:false }).select().single();
+        const { data: row, error } = await sb.from("photos").insert({ data:p.data, rx:p.rx, ry:p.ry, rot:p.rot, big:false, pinned:false }).select().single();
         if(error){ document.getElementById("photoStatus").textContent = "写真機能はまだ準備中（SQL未適用）"; console.error(error); return; }
         if(row) p.id = row.id;
       }
@@ -1394,14 +1400,16 @@ function renderPhotoThumbs(){
   if(!photos.length){ box.innerHTML = '<div class="photo-empty">まだ写真がありません。「＋ 写真を追加」から貼ってみよう 📷</div>'; return; }
   box.innerHTML = "";
   photos.forEach(p => {
-    const d = document.createElement("div"); d.className = "photo-thumb" + (p.big ? " big" : "");
+    const d = document.createElement("div"); d.className = "photo-thumb" + (p.big ? " big" : "") + (p.pinned ? " pinned" : "");
     const im = document.createElement("img"); im.src = p.data; im.alt = "";
     im.onclick = () => openLightbox(p.data);
     const star = document.createElement("button"); star.className = "pt-star"; star.textContent = p.big ? "★" : "☆";
     star.title = "大きく表示する"; star.onclick = (e) => { e.stopPropagation(); toggleBig(p.id); };
     const del = document.createElement("button"); del.className = "pt-del"; del.textContent = "✕"; del.title = "削除";
     del.onclick = (e) => { e.stopPropagation(); if(confirm("この写真を削除する？")) removePhoto(p.id); };
-    d.appendChild(im); d.appendChild(star); d.appendChild(del); box.appendChild(d);
+    const pin = document.createElement("button"); pin.className = "pt-pin"; pin.textContent = "📌"; pin.title = p.pinned ? "位置の固定を解除" : "位置を固定";
+    pin.onclick = (e) => { e.stopPropagation(); togglePin(p.id); };
+    d.appendChild(im); d.appendChild(star); d.appendChild(del); d.appendChild(pin); box.appendChild(d);
   });
 }
 async function toggleBig(id){
@@ -1410,6 +1418,24 @@ async function toggleBig(id){
   if(mode==="cloud"){ try { await sb.from("photos").update({ big: p.big }).eq("id", id); } catch(e){ console.warn(e); } }
   else savePhotosLocal();
   renderPhotoThumbs(); buildPhotos();
+}
+async function togglePin(id){
+  const p = photos.find(x => x.id === id); if(!p) return;
+  p.pinned = !p.pinned;
+  if(mode==="cloud"){ try { await sb.from("photos").update({ pinned: p.pinned }).eq("id", id); } catch(e){ console.warn(e); } }
+  else savePhotosLocal();
+  renderPhotoThumbs(); buildPhotos();
+}
+// 固定(ピン)した写真は位置そのまま、それ以外を毎回ランダムに並べ替える
+function shufflePhotos(){
+  const arr = photos.slice();
+  const unpinned = arr.filter(p => !p.pinned);
+  for(let i = unpinned.length - 1; i > 0; i--){ const j = Math.floor(Math.random() * (i + 1)); const t = unpinned[i]; unpinned[i] = unpinned[j]; unpinned[j] = t; }
+  const result = new Array(arr.length); let u = 0;
+  for(let i = 0; i < arr.length; i++){ if(arr[i].pinned){ result[i] = arr[i]; } }
+  for(let i = 0; i < arr.length; i++){ if(!result[i]){ result[i] = unpinned[u++]; } }
+  photos = result;
+  buildPhotos();
 }
 function openLightbox(src){ const lb = document.getElementById("lightbox"); document.getElementById("lightboxImg").src = src; lb.classList.add("open"); }
 function closeLightbox(){ document.getElementById("lightbox").classList.remove("open"); }
@@ -1782,16 +1808,16 @@ async function init(){
     sb.auth.onAuthStateChange(async (event, s) => {
       session = s;
       if(event==="PASSWORD_RECOVERY"){ recovering = true; showAuth(); setAuthMode("newpass"); return; }
-      if(event==="SIGNED_IN"){ if(recovering) return; mode="cloud"; hideAuth(); await dbLoad(); await loadProfile(); await loadPhotos(); await loadBgmTracks(); render(); buildPhotos(); refreshAcct(); }
-      else if(event==="SIGNED_OUT"){ mode="local"; session=null; myProfile=null; dreams=[]; photos=[]; render(); buildPhotos(); refreshAcct(); showAuth(); }
+      if(event==="SIGNED_IN"){ if(recovering) return; mode="cloud"; hideAuth(); await dbLoad(); await loadProfile(); await loadPhotos(); await loadBgmTracks(); render(); shufflePhotos(); refreshAcct(); }
+      else if(event==="SIGNED_OUT"){ mode="local"; session=null; myProfile=null; dreams=[]; photos=[]; render(); shufflePhotos(); refreshAcct(); showAuth(); }
     });
     if(isRecovery){ recovering = true; showAuth(); setAuthMode("newpass"); return; }
     const { data } = await sb.auth.getSession();
     session = data.session;
-    if(session){ mode="cloud"; hideAuth(); await dbLoad(); await loadProfile(); await loadPhotos(); await loadBgmTracks(); render(); buildPhotos(); refreshAcct(); }
+    if(session){ mode="cloud"; hideAuth(); await dbLoad(); await loadProfile(); await loadPhotos(); await loadBgmTracks(); render(); shufflePhotos(); refreshAcct(); }
     else { showAuth(); }
   } else {
-    mode = "local"; loadLocal(); loadPhotosLocal(); loadBgmTracks(); render(); buildPhotos();
+    mode = "local"; loadLocal(); loadPhotosLocal(); loadBgmTracks(); render(); shufflePhotos();
   }
 }
 init();
