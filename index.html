@@ -311,6 +311,30 @@
   #lightbox.open { display: flex; }
   #lightbox img { max-width: 94vw; max-height: 90vh; border-radius: 8px; border: 5px solid #fff; box-shadow: 0 24px 60px rgba(0,0,0,.55); }
 
+  /* BGM */
+  .bgm-list { display: flex; flex-direction: column; gap: 6px; }
+  .bgm-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border: 1px solid var(--stroke); border-radius: 10px; background: var(--panel-2); cursor: pointer; font-size: 14px; font-weight: 700; color: var(--text); }
+  .bgm-item:hover { border-color: var(--accent); }
+  .bgm-item.on { background: var(--accent); color: #3a2c0c; border-color: transparent; }
+  .bgm-item .ico { font-size: 16px; }
+  .bgm-item .nm { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bgm-item .by { font-size: 11px; color: var(--text-soft); font-weight: 500; }
+  .bgm-item.on .by { color: #6a520f; }
+  .bgm-item .rm { border: none; background: transparent; color: inherit; opacity: .55; cursor: pointer; font-size: 13px; }
+  .bgm-item .rm:hover { opacity: 1; }
+  .bgm-empty { color: var(--text-soft); font-size: 12px; padding: 6px 2px; }
+
+  #bgmBar { display: none; position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 55;
+    align-items: center; gap: 10px; background: #ffffff; border: 1px solid var(--stroke); border-radius: 999px;
+    padding: 7px 12px; box-shadow: var(--sh-2); max-width: 94vw; }
+  #bgmBar.show { display: flex; }
+  #bgmNow { font-size: 12.5px; font-weight: 700; color: var(--text); max-width: 40vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bgm-ctl { border: none; background: transparent; cursor: pointer; font-size: 16px; padding: 2px 4px; line-height: 1; }
+  #bgmVolS { width: 84px; accent-color: var(--accent); }
+  #bgmYT { width: 0; height: 0; overflow: hidden; }
+  #bgmBar.yt #bgmYT { width: 120px; height: 68px; border-radius: 8px; overflow: hidden; }
+  #ytPlayer { width: 100%; height: 100%; }
+
   .empty-note { text-align: center; color: var(--text-soft); padding: 40px; font-size: 14px; }
   footer { text-align: center; color: var(--text-soft); font-size: 12px; margin-top: 46px; opacity: .8; text-shadow: 0 1px 3px rgba(255,253,247,.95); }
   #confetti { position: fixed; inset: 0; pointer-events: none; z-index: 60; }
@@ -378,6 +402,7 @@
         <button class="btn" id="menuBtn" onclick="toggleMenu(event)">⋯ メニュー</button>
         <div class="menu" id="menu">
           <button onclick="shareList(); closeMenu()">🔗 共有リンクをコピー</button>
+          <button onclick="openBgm(); closeMenu()">🎵 作業用BGM</button>
           <button onclick="openPhotos(); closeMenu()">🖼 写真ボード</button>
           <button onclick="openSettings(); closeMenu()">⚙️ 設定（表示名・公開）</button>
           <button onclick="openImport(); closeMenu()">📊 表から取込（Excel/CSV/md）</button>
@@ -534,6 +559,32 @@
     </div>
   </div>
 
+  <!-- BGM選択モーダル -->
+  <div class="modal-bg" id="bgmBg">
+    <div class="modal" style="max-width:460px">
+      <h3>🎵 作業用BGM</h3>
+      <p class="imp-note">作業中に流すBGMを選べます。オルゴール・758Hz・ポップ・ジャズは内蔵の合成音。お気に入りのYouTubeを追加すると、みんなの一覧にも出て共有できます。</p>
+      <div class="bgm-list" id="bgmSynth"></div>
+      <div style="font-size:12px;color:var(--text-soft);font-weight:700;margin:14px 0 6px">みんなのお気に入り（YouTube）</div>
+      <div class="bgm-list" id="bgmFavs"></div>
+      <div class="field" style="margin-top:12px"><input type="text" id="bgmUrl" placeholder="YouTubeのURLを貼り付け" /></div>
+      <div class="field" style="display:flex;gap:8px;margin-bottom:8px">
+        <input type="text" id="bgmName" placeholder="曲名（任意）" style="flex:1" />
+        <button class="btn primary" onclick="addFavorite()">＋ 追加</button>
+      </div>
+      <div class="modal-actions"><button class="btn" onclick="closeBgm()">閉じる</button></div>
+    </div>
+  </div>
+
+  <!-- BGMミニバー（再生中に表示・YouTubeプレーヤーもここ） -->
+  <div id="bgmBar">
+    <span id="bgmNow">♪</span>
+    <button class="bgm-ctl" onclick="stopBgm()" title="停止">⏹</button>
+    <input type="range" id="bgmVolS" min="0" max="100" value="50" oninput="setBgmVolume(this.value/100)" title="音量" />
+    <button class="bgm-ctl" onclick="openBgm()" title="選ぶ">🎵</button>
+    <div id="bgmYT"><div id="ytPlayer"></div></div>
+  </div>
+
   <div id="lightbox" onclick="closeLightbox()"><img id="lightboxImg" src="" alt="" /></div>
 
   <div id="toast" class="toast"></div>
@@ -585,7 +636,7 @@ let authMode = "login";      // "login" | "signup" | "reset" | "newpass"
 let recovering = false;      // パスワード再設定リンクから来た状態
 let themeKey = "twilight";
 let audioCtx = null;
-let muted = localStorage.getItem("yumeMuted") === "1";
+let muted = false; try { muted = localStorage.getItem("yumeMuted") === "1"; } catch(e){}
 
 function catOf(key){ return CATEGORIES.find(c => c.key === key) || CATEGORIES[0]; }
 function uid(){ return "d" + Math.random().toString(36).slice(2,9); }
@@ -1457,6 +1508,141 @@ function layoutPhotos(){
   });
 }
 
+/* ---------- 作業用BGM ---------- */
+let bgmGain = null;
+let bgmVol = 0.5; try { bgmVol = parseFloat(localStorage.getItem("yumeBgmVol") || "0.5"); } catch(e){}
+let bgmTimer = null, bgmStep = 0, bgmTrack = null, bgmNextTime = 0;
+let bgmPlaying = null;      // null | 合成キー | "yt:<id>"
+let bgmFav = [];
+let ytReady = false, ytPlayer = null, ytPending = null;
+const MIDI = m => 440 * Math.pow(2, (m - 69) / 12);
+
+function bgmAC(){ const ac = ensureAudio(); if(!ac) return null; if(!bgmGain){ bgmGain = ac.createGain(); bgmGain.gain.value = bgmVol; bgmGain.connect(ac.destination); } return ac; }
+function bvoice(ac, freq, t0, dur, o){ o = o || {}; const osc = ac.createOscillator(), g = ac.createGain(); osc.type = o.type || "sine"; osc.frequency.value = freq; if(o.detune) osc.detune.value = o.detune; const peak = Math.max(0.0003, o.gain != null ? o.gain : 0.2), atk = o.attack != null ? o.attack : 0.01, rel = o.release != null ? o.release : 0.2; g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(peak, t0 + atk); g.gain.setValueAtTime(peak, t0 + Math.max(atk, dur - rel)); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur); osc.connect(g); g.connect(bgmGain); osc.start(t0); osc.stop(t0 + dur + 0.04); }
+let _noiseBuf = null;
+function bnoise(ac, t0, dur, gain){ if(!_noiseBuf){ _noiseBuf = ac.createBuffer(1, Math.floor(ac.sampleRate * 0.4), ac.sampleRate); const d = _noiseBuf.getChannelData(0); for(let i=0;i<d.length;i++) d[i]=Math.random()*2-1; } const s=ac.createBufferSource(); s.buffer=_noiseBuf; const g=ac.createGain(), hp=ac.createBiquadFilter(); hp.type="highpass"; hp.frequency.value=6500; g.gain.setValueAtTime(gain||0.06, t0); g.gain.exponentialRampToValueAtTime(0.0001, t0+dur); s.connect(hp); hp.connect(g); g.connect(bgmGain); s.start(t0); s.stop(t0+dur+0.05); }
+function bkick(ac, t0){ const o=ac.createOscillator(), g=ac.createGain(); o.type="sine"; o.frequency.setValueAtTime(135,t0); o.frequency.exponentialRampToValueAtTime(45,t0+0.12); g.gain.setValueAtTime(0.45,t0); g.gain.exponentialRampToValueAtTime(0.0001,t0+0.18); o.connect(g); g.connect(bgmGain); o.start(t0); o.stop(t0+0.2); }
+
+const TRACKS = {
+  orgel: { name:"オルゴール", ico:"🎹", bpm:70, fn(ac,t,step){
+    const chords=[[60,64,67],[57,60,64],[65,69,72],[67,71,74]]; const ch=chords[Math.floor(step/16)%4], s=step%16;
+    if(s===0||s===8){ ch.forEach(m=>bvoice(ac,MIDI(m+12),t,1.4,{type:"triangle",gain:0.08,attack:0.004,release:1.2})); }
+    const mel=[0,4,7,9,12];
+    if(s%2===0 && Math.random()<0.55){ const nn=72+mel[Math.floor(Math.random()*mel.length)]; bvoice(ac,MIDI(nn),t,0.55,{type:"triangle",gain:0.13,attack:0.003,release:0.5}); bvoice(ac,MIDI(nn+12),t,0.45,{type:"sine",gain:0.03,attack:0.003,release:0.4}); }
+  }},
+  hz758: { name:"758Hz ヒーリング", ico:"🌿", bpm:60, fn(ac,t,step){
+    if(step%16===0){ bvoice(ac,758,t,4.4,{type:"sine",gain:0.13,attack:1.1,release:2.2}); bvoice(ac,379,t,4.4,{type:"sine",gain:0.06,attack:1.3,release:2.2}); bvoice(ac,1137,t,4.4,{type:"sine",gain:0.025,attack:1.5,release:2.2,detune:5}); }
+  }},
+  pop: { name:"ポップ", ico:"✨", bpm:112, fn(ac,t,step){
+    const prog=[[60,64,67],[67,71,74],[57,60,64],[65,69,72]]; const ch=prog[Math.floor(step/16)%4], s=step%16;
+    if(s%8===0) bkick(ac,t);
+    if(s%4===2) bnoise(ac,t,0.05,0.05);
+    if(s%2===0) bnoise(ac,t,0.02,0.02);
+    if(s%4===0) bvoice(ac,MIDI(ch[0]-12),t,0.34,{type:"triangle",gain:0.22,attack:0.005,release:0.2});
+    const arp=[ch[0],ch[1],ch[2],ch[1]];
+    if(s%2===0) bvoice(ac,MIDI(arp[(s/2)%4]+12),t,0.22,{type:"square",gain:0.05,attack:0.003,release:0.15});
+    if(s===0) ch.forEach(m=>bvoice(ac,MIDI(m),t,1.6,{type:"sawtooth",gain:0.018,attack:0.05,release:1.4}));
+  }},
+  jazz: { name:"ジャズ", ico:"🎷", bpm:96, swing:true, fn(ac,t,step){
+    const prog=[[62,65,69,72],[67,71,74,77],[60,64,67,71],[60,64,67,71]]; const ch=prog[Math.floor(step/16)%4], s=step%16;
+    if(s%4===0){ const w=[ch[0]-12,ch[0]-10,ch[0]-9,ch[0]-7]; bvoice(ac,MIDI(w[(s/4)%4]),t,0.5,{type:"triangle",gain:0.2,attack:0.005,release:0.3}); }
+    if(s===4||s===10){ ch.forEach(m=>bvoice(ac,MIDI(m),t,0.55,{type:"sine",gain:0.05,attack:0.01,release:0.45})); ch.forEach(m=>bvoice(ac,MIDI(m+12),t,0.55,{type:"triangle",gain:0.014,attack:0.01,release:0.45})); }
+    if(s%2===0) bnoise(ac,t,0.04,0.018);
+  }},
+};
+
+function bgmSchedulerTick(){
+  const ac = bgmAC(); if(!ac || !bgmTrack) return;
+  const stepDur = 60 / bgmTrack.bpm / 4;
+  while(bgmNextTime < ac.currentTime + 0.2){
+    const sw = (bgmTrack.swing && bgmStep % 4 === 2) ? stepDur * 0.32 : 0;
+    try { bgmTrack.fn(ac, bgmNextTime + sw, bgmStep); } catch(e){ console.warn(e); }
+    bgmStep++; bgmNextTime += stepDur;
+  }
+}
+function startSynth(key){
+  stopYT();
+  const ac = bgmAC(); if(!ac){ alert("この端末では音を再生できません"); return; }
+  if(ac.state === "suspended") ac.resume();
+  bgmTrack = TRACKS[key]; bgmStep = 0; bgmNextTime = ac.currentTime + 0.15;
+  clearInterval(bgmTimer); bgmTimer = setInterval(bgmSchedulerTick, 40);
+  bgmGain.gain.cancelScheduledValues(ac.currentTime); bgmGain.gain.setTargetAtTime(bgmVol, ac.currentTime, 0.1);
+  bgmPlaying = key; showBgmBar(); updateBgmUI();
+}
+function stopSynthScheduler(){ clearInterval(bgmTimer); bgmTimer = null; bgmTrack = null; }
+function stopBgm(){ stopSynthScheduler(); stopYT(); if(bgmGain && audioCtx) bgmGain.gain.setTargetAtTime(0.0001, audioCtx.currentTime, 0.08); bgmPlaying = null; hideBgmBar(); updateBgmUI(); }
+function setBgmVolume(v){ bgmVol = v; try { localStorage.setItem("yumeBgmVol", String(v)); } catch(e){} if(bgmGain && audioCtx) bgmGain.gain.setTargetAtTime(v, audioCtx.currentTime, 0.05); if(ytPlayer && ytPlayer.setVolume) try{ ytPlayer.setVolume(Math.round(v*100)); }catch(e){} const s=document.getElementById("bgmVolS"); if(s) s.value = Math.round(v*100); }
+
+function ytIdFrom(url){ const m = String(url||"").match(/(?:youtu\.be\/|[?&]v=|\/embed\/|\/shorts\/)([A-Za-z0-9_-]{11})/); if(m) return m[1]; const t=String(url||"").trim(); return /^[A-Za-z0-9_-]{11}$/.test(t) ? t : null; }
+function loadYT(){ if(window.YT && window.YT.Player){ ytReady = true; return; } if(document.getElementById("yt-api")) return; const s=document.createElement("script"); s.id="yt-api"; s.src="https://www.youtube.com/iframe_api"; document.head.appendChild(s); window.onYouTubeIframeAPIReady = () => { ytReady = true; if(ytPending){ const p=ytPending; ytPending=null; playYT(p.id, p.title); } }; }
+function playYT(videoId, title){
+  stopSynthScheduler();
+  bgmPlaying = "yt:" + videoId;
+  document.getElementById("bgmBar").classList.add("yt");
+  showBgmBar(title || "YouTube");
+  if(!(window.YT && window.YT.Player)){ ytPending = { id: videoId, title }; loadYT(); updateBgmUI(); return; }
+  if(!ytPlayer){
+    ytPlayer = new YT.Player("ytPlayer", { height:"100%", width:"100%", videoId,
+      playerVars:{ autoplay:1, controls:0, modestbranding:1, rel:0, playsinline:1, loop:1, playlist:videoId },
+      events:{ onReady:(e)=>{ try{ e.target.setVolume(Math.round(bgmVol*100)); e.target.playVideo(); }catch(_){} }, onStateChange:(e)=>{ if(e.data === YT.PlayerState.ENDED) try{ e.target.playVideo(); }catch(_){} } } });
+  } else { try{ ytPlayer.loadVideoById(videoId); ytPlayer.setVolume(Math.round(bgmVol*100)); ytPlayer.playVideo(); }catch(_){} }
+  updateBgmUI();
+}
+function stopYT(){ const bar=document.getElementById("bgmBar"); if(bar) bar.classList.remove("yt"); if(ytPlayer && ytPlayer.stopVideo) try{ ytPlayer.stopVideo(); }catch(e){} }
+
+function showBgmBar(title){ const bar=document.getElementById("bgmBar"); bar.classList.add("show"); const now=document.getElementById("bgmNow"); now.textContent = "♪ " + (title || (bgmPlaying && TRACKS[bgmPlaying] ? TRACKS[bgmPlaying].name : "")); const s=document.getElementById("bgmVolS"); if(s) s.value = Math.round(bgmVol*100); }
+function hideBgmBar(){ document.getElementById("bgmBar").classList.remove("show"); }
+function openBgm(){ renderBgmSynth(); renderBgmFavs(); document.getElementById("bgmVolS").value = Math.round(bgmVol*100); document.getElementById("bgmBg").classList.add("open"); }
+function closeBgm(){ document.getElementById("bgmBg").classList.remove("open"); }
+function updateBgmUI(){ [...document.querySelectorAll(".bgm-item")].forEach(el => el.classList.toggle("on", el.dataset.key === bgmPlaying)); }
+function renderBgmSynth(){
+  const box=document.getElementById("bgmSynth"); box.innerHTML="";
+  Object.keys(TRACKS).forEach(key=>{
+    const t=TRACKS[key]; const el=document.createElement("div"); el.className="bgm-item"+(bgmPlaying===key?" on":""); el.dataset.key=key;
+    el.innerHTML = `<span class="ico">${t.ico}</span><span class="nm">${t.name}</span><span>${bgmPlaying===key?"■":"▶"}</span>`;
+    el.onclick=()=>{ if(bgmPlaying===key){ stopBgm(); } else { startSynth(key); } renderBgmSynth(); };
+    box.appendChild(el);
+  });
+}
+function renderBgmFavs(){
+  const box=document.getElementById("bgmFavs"); box.innerHTML="";
+  if(!bgmFav.length){ box.innerHTML='<div class="bgm-empty">まだありません。下でYouTubeのURLを追加してね 🎧</div>'; return; }
+  bgmFav.forEach(f=>{
+    const key="yt:"+f.youtube_id; const el=document.createElement("div"); el.className="bgm-item"+(bgmPlaying===key?" on":""); el.dataset.key=key;
+    el.innerHTML=`<span class="ico">▶</span><span class="nm">${escapeHtml(f.title)}<span class="by">${f.added_by?(" ・"+escapeHtml(f.added_by)):""}</span></span>`;
+    el.onclick=()=>{ playYT(f.youtube_id, f.title); renderBgmFavs(); };
+    if(canDeleteFav(f)){ const rm=document.createElement("button"); rm.className="rm"; rm.textContent="✕"; rm.onclick=(e)=>{ e.stopPropagation(); removeFavorite(f); }; el.appendChild(rm); }
+    box.appendChild(el);
+  });
+}
+function canDeleteFav(f){ if(mode!=="cloud") return true; return session && f.user_id === session.user.id; }
+async function loadBgmTracks(){
+  if(mode==="cloud" && sb){ try{ const { data } = await sb.from("bgm_tracks").select("*").order("created_at",{ascending:false}); bgmFav = data || []; }catch(e){ bgmFav=[]; } }
+  else { try{ bgmFav = JSON.parse(localStorage.getItem("yumeBgmFav")||"[]"); }catch(e){ bgmFav=[]; } }
+}
+async function addFavorite(){
+  const url=document.getElementById("bgmUrl").value.trim(), name=document.getElementById("bgmName").value.trim();
+  const vid=ytIdFrom(url); if(!vid){ alert("YouTubeのURL（またはID）を確認してね"); return; }
+  const title=name || "お気に入りBGM";
+  if(mode==="cloud" && sb){
+    if(!session){ alert("共有するにはログインが必要です"); return; }
+    const addedBy=(myProfile && myProfile.display_name) || (session.user.email||"").split("@")[0] || "匿名";
+    const { error } = await sb.from("bgm_tracks").insert({ title, youtube_id:vid, added_by:addedBy });
+    if(error){ alert("追加に失敗しました（SQL未適用かも）"); console.error(error); return; }
+  } else {
+    bgmFav.unshift({ id:"l"+Date.now(), title, youtube_id:vid, added_by:"あなた", user_id:"local" });
+    localStorage.setItem("yumeBgmFav", JSON.stringify(bgmFav));
+  }
+  document.getElementById("bgmUrl").value=""; document.getElementById("bgmName").value="";
+  await loadBgmTracks(); renderBgmFavs(); playYT(vid, title);
+}
+async function removeFavorite(f){
+  if(!confirm("このBGMを一覧から削除する？")) return;
+  if(mode==="cloud" && sb){ try{ await sb.from("bgm_tracks").delete().eq("id", f.id); }catch(e){ console.warn(e); } }
+  else { bgmFav = bgmFav.filter(x=>x.id!==f.id); localStorage.setItem("yumeBgmFav", JSON.stringify(bgmFav)); }
+  await loadBgmTracks(); renderBgmFavs();
+}
+
 /* ---------- 認証 ---------- */
 function showAuth(){ document.getElementById("authScreen").classList.add("open"); document.querySelector(".wrap").style.display = "none"; }
 function hideAuth(){ document.getElementById("authScreen").classList.remove("open"); document.querySelector(".wrap").style.display = "block"; }
@@ -1650,6 +1836,7 @@ async function init(){
   document.getElementById("rankBg").addEventListener("click", e => { if(e.target.id==="rankBg") closeRanking(); });
   document.addEventListener("click", e => { if(!e.target.closest(".menu-wrap")) closeMenu(); });
   document.getElementById("photoBg").addEventListener("click", e => { if(e.target.id==="photoBg") closePhotos(); });
+  document.getElementById("bgmBg").addEventListener("click", e => { if(e.target.id==="bgmBg") closeBgm(); });
   let _rt; window.addEventListener("resize", () => { clearTimeout(_rt); _rt = setTimeout(layoutPhotos, 150); });
   document.getElementById("mText").addEventListener("keydown", e => { if(e.key==="Enter"){ e.preventDefault(); saveDream(); } });
   document.getElementById("authPass").addEventListener("keydown", e => { if(e.key==="Enter") submitAuth(); });
@@ -1663,16 +1850,16 @@ async function init(){
     sb.auth.onAuthStateChange(async (event, s) => {
       session = s;
       if(event==="PASSWORD_RECOVERY"){ recovering = true; showAuth(); setAuthMode("newpass"); return; }
-      if(event==="SIGNED_IN"){ if(recovering) return; mode="cloud"; hideAuth(); await dbLoad(); await loadProfile(); await loadPhotos(); render(); buildPhotos(); refreshAcct(); }
+      if(event==="SIGNED_IN"){ if(recovering) return; mode="cloud"; hideAuth(); await dbLoad(); await loadProfile(); await loadPhotos(); await loadBgmTracks(); render(); buildPhotos(); refreshAcct(); }
       else if(event==="SIGNED_OUT"){ mode="local"; session=null; myProfile=null; dreams=[]; photos=[]; render(); buildPhotos(); refreshAcct(); showAuth(); }
     });
     if(isRecovery){ recovering = true; showAuth(); setAuthMode("newpass"); return; }
     const { data } = await sb.auth.getSession();
     session = data.session;
-    if(session){ mode="cloud"; hideAuth(); await dbLoad(); await loadProfile(); await loadPhotos(); render(); buildPhotos(); refreshAcct(); }
+    if(session){ mode="cloud"; hideAuth(); await dbLoad(); await loadProfile(); await loadPhotos(); await loadBgmTracks(); render(); buildPhotos(); refreshAcct(); }
     else { showAuth(); }
   } else {
-    mode = "local"; loadLocal(); loadPhotosLocal(); render(); buildPhotos();
+    mode = "local"; loadLocal(); loadPhotosLocal(); loadBgmTracks(); render(); buildPhotos();
   }
 }
 init();
