@@ -17,6 +17,9 @@ create table if not exists public.dreams (
   created_at timestamptz default now()
 );
 
+-- 達成の思い出写真（既存テーブルにも追加）
+alter table public.dreams add column if not exists photo text;
+
 alter table public.dreams enable row level security;
 
 drop policy if exists "own dreams" on public.dreams;

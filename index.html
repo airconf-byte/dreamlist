@@ -203,6 +203,10 @@
   .iconbtn:hover { opacity: 1; background: rgba(0,0,0,.07); }
   .iconbtn.on { opacity: 1; color: var(--accent); background: rgba(211,162,76,.15); }
   .card .glowstar { position: absolute; right: 9px; top: 7px; font-size: 12px; opacity: .85; pointer-events: none; }
+  .dream-photo-wrap { position: relative; margin: 0 0 9px; border-radius: 9px; overflow: hidden; box-shadow: 0 2px 8px rgba(90,65,30,.2); }
+  .dream-photo { width: 100%; max-height: 150px; object-fit: cover; display: block; cursor: zoom-in; }
+  .dp-rm { position: absolute; top: 6px; right: 6px; width: 22px; height: 22px; border: none; border-radius: 50%; background: rgba(0,0,0,.55); color: #fff; cursor: pointer; font-size: 12px; line-height: 1; display: flex; align-items: center; justify-content: center; }
+  .dp-rm:hover { background: rgba(0,0,0,.75); }
   .card.reorderable { cursor: grab; }
   .card.reorderable:active { cursor: grabbing; }
   .card.dragging { box-shadow: var(--sh-3); opacity: .98; }
@@ -591,6 +595,7 @@
 
   <div id="lightbox" onclick="closeLightbox()"><img id="lightboxImg" src="" alt="" /></div>
 
+  <input type="file" id="dreamPhotoInput" accept="image/*" style="display:none" onchange="onDreamPhotoFile(event)" />
   <div id="toast" class="toast"></div>
   <canvas id="confetti"></canvas>
 
@@ -651,7 +656,7 @@ function save(){ if(mode==="local") localStorage.setItem(STORE_KEY, JSON.stringi
 function loadLocal(){ try { dreams = JSON.parse(localStorage.getItem(STORE_KEY)) || []; } catch(e){ dreams = []; } }
 
 /* ---------- Supabase 行変換 ---------- */
-function fromRow(r){ return { id:r.id, text:r.text, category:r.category, deadline:r.deadline, why:r.why||"", done:!!r.done, doneDate:r.done_date, sort:r.sort }; }
+function fromRow(r){ return { id:r.id, text:r.text, category:r.category, deadline:r.deadline, why:r.why||"", done:!!r.done, doneDate:r.done_date, sort:r.sort, photo:r.photo||null }; }
 function toRow(d){ return { text:d.text, category:d.category, deadline:d.deadline, why:d.why, done:d.done, done_date:d.doneDate, sort:d.sort }; }
 
 async function dbLoad(){
@@ -898,6 +903,14 @@ function cardEl(d){
       <span class="check"><span class="box">${d.done?'✓':''}</span>${d.done?'達成！':'達成した'}</span>
       <span class="spacer"></span>
     </div>`;
+  if(d.done && d.photo){
+    const wrap = document.createElement("div"); wrap.className = "dream-photo-wrap";
+    const ph = document.createElement("img"); ph.className = "dream-photo"; ph.src = d.photo; ph.alt = "";
+    ph.onclick = (e) => { e.stopPropagation(); openLightbox(d.photo); };
+    wrap.appendChild(ph);
+    if(!readOnly){ const x = document.createElement("button"); x.className = "dp-rm"; x.textContent = "✕"; x.title = "写真を削除"; x.onclick = (e) => { e.stopPropagation(); removeDreamPhoto(d.id); }; wrap.appendChild(x); }
+    el.insertBefore(wrap, el.querySelector(".head"));
+  }
   if(!readOnly) el.querySelector(".check").onclick = () => toggleDone(d.id);
   const row = el.querySelector(".row");
   if(d.why){
@@ -906,6 +919,12 @@ function cardEl(d){
     const why = el.querySelector(".why");
     wbtn.onclick = (e) => { e.stopPropagation(); const on = why.classList.toggle("show"); wbtn.classList.toggle("on", on); };
     row.appendChild(wbtn);
+  }
+  if(!readOnly && d.done){
+    const cam = document.createElement("button");
+    cam.className = "iconbtn"; cam.title = d.photo ? "写真を変更" : "達成の写真を追加"; cam.textContent = "📷";
+    cam.onclick = (e) => { e.stopPropagation(); pickDreamPhoto(d.id); };
+    row.appendChild(cam);
   }
   if(!readOnly){
     el.querySelector(".text").onclick = () => openEdit(d.id);
@@ -985,6 +1004,30 @@ async function toggleDone(id){
   render();
   if(d.done){ burstConfetti(); playAchieve(); showToast(CONGRATS[Math.floor(Math.random()*CONGRATS.length)]); logActivity("done"); }
   if(mode==="cloud") await dbUpdate(d); else save();
+}
+
+/* ---------- 達成の思い出写真 ---------- */
+let dreamPhotoTargetId = null;
+function pickDreamPhoto(id){ dreamPhotoTargetId = id; document.getElementById("dreamPhotoInput").click(); }
+async function onDreamPhotoFile(ev){
+  const file = ev.target.files[0]; ev.target.value = ""; if(!file || !dreamPhotoTargetId) return;
+  const d = dreams.find(x => x.id === dreamPhotoTargetId); if(!d) return;
+  try {
+    const data = await compressImage(file, 1000, 0.75);
+    d.photo = data;
+    if(mode==="cloud"){ try { await sb.from("dreams").update({ photo: data }).eq("id", d.id); } catch(e){ alert("写真の保存に失敗しました（SQL未適用かも）"); console.error(e); } }
+    else save();
+    render();
+    showToast("📷 達成の思い出を添えたよ", 2000);
+  } catch(e){ console.warn(e); alert("画像を読み込めませんでした"); }
+}
+async function removeDreamPhoto(id){
+  const d = dreams.find(x => x.id === id); if(!d) return;
+  if(!confirm("この達成写真を削除する？")) return;
+  d.photo = null;
+  if(mode==="cloud"){ try { await sb.from("dreams").update({ photo: null }).eq("id", id); } catch(e){ console.warn(e); } }
+  else save();
+  render();
 }
 
 /* ---------- 共有 ---------- */
