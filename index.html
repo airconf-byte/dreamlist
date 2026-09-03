@@ -342,6 +342,22 @@
   #bgmBar.yt #bgmYT { width: 120px; height: 68px; border-radius: 8px; overflow: hidden; }
   #ytPlayer { width: 100%; height: 100%; }
 
+  /* みんなの夢ウォール */
+  .wall-modal { max-width: 760px; padding: 0; overflow: hidden; }
+  .wall-head { text-align: center; padding: 26px 20px 22px; color: #fff;
+    background: linear-gradient(120deg, #ff8a5b, #ffcf5b 28%, #6be39a 52%, #4fb0e3 74%, #b18cff);
+    position: relative; }
+  .wall-title { font-family: "Zen Kaku Gothic New", sans-serif; font-weight: 900; font-size: 28px; letter-spacing: .04em; text-shadow: 0 2px 10px rgba(0,0,0,.18); }
+  .wall-sub { font-weight: 800; font-size: 15px; margin-top: 6px; letter-spacing: .08em; text-shadow: 0 1px 6px rgba(0,0,0,.18); }
+  .wall-count { font-size: 12px; font-weight: 700; margin-top: 8px; opacity: .95; }
+  .wall-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; padding: 18px; max-height: 60vh; overflow-y: auto; }
+  .wall-card { position: relative; background: #fff; border: 1px solid var(--stroke); border-left: 4px solid var(--catcolor); border-radius: 12px; padding: 13px 14px; box-shadow: var(--sh-1); transition: transform .14s, box-shadow .2s; }
+  .wall-card:hover { transform: translateY(-3px); box-shadow: var(--sh-2); }
+  .wall-dream { font-size: 14.5px; font-weight: 700; line-height: 1.5; color: var(--text); word-break: break-word; }
+  .wall-done { display: inline-block; font-size: 10px; font-weight: 800; color: #2c7a4b; background: #d9f2e2; border-radius: 999px; padding: 1px 8px; margin-right: 6px; vertical-align: middle; }
+  .wall-name { margin-top: 9px; font-size: 12px; font-weight: 800; color: var(--catcolor); }
+  .wall-empty { grid-column: 1 / -1; text-align: center; color: var(--text-soft); padding: 40px 16px; font-size: 14px; line-height: 1.8; }
+
   .empty-note { text-align: center; color: var(--text-soft); padding: 40px; font-size: 14px; }
   footer { text-align: center; color: var(--text-soft); font-size: 12px; margin-top: 46px; opacity: .8; text-shadow: 0 1px 3px rgba(255,253,247,.95); }
   #confetti { position: fixed; inset: 0; pointer-events: none; z-index: 60; }
@@ -403,6 +419,7 @@
 
     <div class="toolbar" id="toolbar">
       <button class="btn primary" onclick="openAdd()">＋ 夢を追加</button>
+      <button class="btn" onclick="openWall()">🌈 みんなの夢</button>
       <button class="btn" onclick="openRanking()">🏆 ランキング</button>
       <button class="btn icon-btn" onclick="location.reload()" title="画面を更新">🔄</button>
       <div class="menu-wrap">
@@ -534,6 +551,19 @@
     </div>
   </div>
 
+  <!-- みんなの夢ウォール -->
+  <div class="modal-bg" id="wallBg">
+    <div class="modal wall-modal">
+      <div class="wall-head">
+        <div class="wall-title">🌈 みんなの夢</div>
+        <div class="wall-sub">一緒に叶えよう！</div>
+        <div class="wall-count" id="wallCount"></div>
+      </div>
+      <div class="wall-grid" id="wallGrid"></div>
+      <div class="modal-actions"><button class="btn" onclick="closeWall()">閉じる</button></div>
+    </div>
+  </div>
+
   <!-- ランキングモーダル -->
   <div class="modal-bg" id="rankBg">
     <div class="modal" style="max-width:520px">
@@ -656,7 +686,7 @@ function save(){ if(mode==="local") localStorage.setItem(STORE_KEY, JSON.stringi
 function loadLocal(){ try { dreams = JSON.parse(localStorage.getItem(STORE_KEY)) || []; } catch(e){ dreams = []; } }
 
 /* ---------- Supabase 行変換 ---------- */
-function fromRow(r){ return { id:r.id, text:r.text, category:r.category, deadline:r.deadline, why:r.why||"", done:!!r.done, doneDate:r.done_date, sort:r.sort, photo:r.photo||null }; }
+function fromRow(r){ return { id:r.id, text:r.text, category:r.category, deadline:r.deadline, why:r.why||"", done:!!r.done, doneDate:r.done_date, sort:r.sort, photo:r.photo||null, shared:!!r.shared }; }
 function toRow(d){ return { text:d.text, category:d.category, deadline:d.deadline, why:d.why, done:d.done, done_date:d.doneDate, sort:d.sort }; }
 
 async function dbLoad(){
@@ -920,6 +950,14 @@ function cardEl(d){
     wbtn.onclick = (e) => { e.stopPropagation(); const on = why.classList.toggle("show"); wbtn.classList.toggle("on", on); };
     row.appendChild(wbtn);
   }
+  if(!readOnly){
+    const share = document.createElement("button");
+    share.className = "iconbtn" + (d.shared ? " on" : "");
+    share.title = d.shared ? "みんなの夢に公開中（解除する）" : "みんなの夢に公開する";
+    share.textContent = "🌐";
+    share.onclick = (e) => { e.stopPropagation(); toggleShareDream(d.id); };
+    row.appendChild(share);
+  }
   if(!readOnly && d.done){
     const cam = document.createElement("button");
     cam.className = "iconbtn"; cam.title = d.photo ? "写真を変更" : "達成の写真を追加"; cam.textContent = "📷";
@@ -1028,6 +1066,40 @@ async function removeDreamPhoto(id){
   if(mode==="cloud"){ try { await sb.from("dreams").update({ photo: null }).eq("id", id); } catch(e){ console.warn(e); } }
   else save();
   render();
+}
+
+/* ---------- みんなの夢（個別公開＆ウォール） ---------- */
+async function toggleShareDream(id){
+  const d = dreams.find(x => x.id === id); if(!d) return;
+  if(mode!=="cloud"){ alert("「みんなの夢」への公開はログイン時に使えます"); return; }
+  const turningOn = !d.shared;
+  if(turningOn){
+    if(!myProfile || !myProfile.display_name){
+      const nm = (prompt("みんなの夢に表示する名前は？", (session && (session.user.email||"").split("@")[0]) || "") || "").trim();
+      if(!nm) return;
+      try { await sb.from("profiles").update({ display_name: nm }).eq("id", session.user.id); if(myProfile) myProfile.display_name = nm; else myProfile = { display_name: nm }; } catch(e){ console.error(e); }
+    }
+  }
+  d.shared = turningOn;
+  try { await sb.from("dreams").update({ shared: d.shared }).eq("id", id); }
+  catch(e){ alert("公開設定の保存に失敗しました（SQL未適用かも）"); console.error(e); d.shared = !turningOn; return; }
+  render();
+  showToast(d.shared ? "🌐 みんなの夢に公開したよ！" : "公開を解除したよ", 1800);
+}
+function closeWall(){ document.getElementById("wallBg").classList.remove("open"); }
+async function openWall(){
+  if(!CLOUD || !sb){ alert("「みんなの夢」はクラウド接続時に使えます"); return; }
+  const grid = document.getElementById("wallGrid");
+  grid.innerHTML = '<div class="wall-empty">読み込み中…</div>';
+  document.getElementById("wallBg").classList.add("open");
+  const { data, error } = await sb.rpc("get_public_dreams");
+  if(error){ grid.innerHTML = '<div class="wall-empty">「みんなの夢」はまだ準備中です（SQL未適用）</div>'; return; }
+  if(!data || !data.length){ grid.innerHTML = '<div class="wall-empty">まだ公開された夢がありません。<br>各夢の 🌐 を押して、あなたの夢を最初に公開しよう！🌈</div>'; return; }
+  grid.innerHTML = data.map(r => {
+    const c = catOf(r.category);
+    return `<div class="wall-card" style="--catcolor:${c.color}"><div class="wall-dream">${r.done?'<span class="wall-done">叶えた！</span>':''}${escapeHtml(r.text)}</div><div class="wall-name">${c.emoji} ${escapeHtml(r.display_name)}</div></div>`;
+  }).join("");
+  document.getElementById("wallCount").textContent = data.length + " の夢";
 }
 
 /* ---------- 共有 ---------- */
@@ -1835,6 +1907,7 @@ async function init(){
   document.getElementById("importBg").addEventListener("click", e => { if(e.target.id==="importBg") closeImport(); });
   document.getElementById("settingsBg").addEventListener("click", e => { if(e.target.id==="settingsBg") closeSettings(); });
   document.getElementById("rankBg").addEventListener("click", e => { if(e.target.id==="rankBg") closeRanking(); });
+  document.getElementById("wallBg").addEventListener("click", e => { if(e.target.id==="wallBg") closeWall(); });
   document.addEventListener("click", e => { if(!e.target.closest(".menu-wrap")) closeMenu(); });
   document.getElementById("photoBg").addEventListener("click", e => { if(e.target.id==="photoBg") closePhotos(); });
   document.getElementById("bgmBg").addEventListener("click", e => { if(e.target.id==="bgmBg") closeBgm(); });
