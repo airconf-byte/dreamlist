@@ -1094,12 +1094,18 @@ async function openWall(){
   document.getElementById("wallBg").classList.add("open");
   const { data, error } = await sb.rpc("get_public_dreams");
   if(error){ grid.innerHTML = '<div class="wall-empty">「みんなの夢」はまだ準備中です（SQL未適用）</div>'; return; }
-  if(!data || !data.length){ grid.innerHTML = '<div class="wall-empty">まだ公開された夢がありません。<br>各夢の 🌐 を押して、あなたの夢を最初に公開しよう！🌈</div>'; return; }
-  grid.innerHTML = data.map(r => {
+  // 特定の名前はウォールに表示しない
+  const HIDE_NAMES = ["マリーナ","まりーな","まりな","marina"];
+  const rows = (data||[]).filter(r => {
+    const n = (r.display_name||"").trim().toLowerCase();
+    return !HIDE_NAMES.some(h => n.includes(h.toLowerCase()));
+  });
+  if(!rows.length){ grid.innerHTML = '<div class="wall-empty">まだ公開された夢がありません。<br>各夢の 🌐 を押して、あなたの夢を最初に公開しよう！🌈</div>'; return; }
+  grid.innerHTML = rows.map(r => {
     const c = catOf(r.category);
     return `<div class="wall-card" style="--catcolor:${c.color}"><div class="wall-dream">${r.done?'<span class="wall-done">叶えた！</span>':''}${escapeHtml(r.text)}</div><div class="wall-name">${c.emoji} ${escapeHtml(r.display_name)}</div></div>`;
   }).join("");
-  document.getElementById("wallCount").textContent = data.length + " の夢";
+  document.getElementById("wallCount").textContent = rows.length + " の夢";
 }
 
 /* ---------- 共有 ---------- */
